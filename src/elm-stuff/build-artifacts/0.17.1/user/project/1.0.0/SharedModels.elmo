@@ -1,0 +1,8 @@
+var _user$project$SharedModels$GMPos = F2(
+	function (a, b) {
+		return {lat: a, lng: b};
+	});
+var _user$project$SharedModels$GMPosWVal = F2(
+	function (a, b) {
+		return {pos: a, value: b};
+	});

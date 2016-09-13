@@ -1,0 +1,95 @@
+var _user$project$GMPorts$addMarker = _elm_lang$core$Native_Platform.incomingPort(
+	'addMarker',
+	A2(
+		_elm_lang$core$Json_Decode$andThen,
+		A2(_elm_lang$core$Json_Decode_ops[':='], 'lat', _elm_lang$core$Json_Decode$float),
+		function (lat) {
+			return A2(
+				_elm_lang$core$Json_Decode$andThen,
+				A2(_elm_lang$core$Json_Decode_ops[':='], 'lng', _elm_lang$core$Json_Decode$float),
+				function (lng) {
+					return _elm_lang$core$Json_Decode$succeed(
+						{lat: lat, lng: lng});
+				});
+		}));
+var _user$project$GMPorts$markerClicked = _elm_lang$core$Native_Platform.incomingPort(
+	'markerClicked',
+	A2(
+		_elm_lang$core$Json_Decode$andThen,
+		A2(_elm_lang$core$Json_Decode_ops[':='], 'lat', _elm_lang$core$Json_Decode$float),
+		function (lat) {
+			return A2(
+				_elm_lang$core$Json_Decode$andThen,
+				A2(_elm_lang$core$Json_Decode_ops[':='], 'lng', _elm_lang$core$Json_Decode$float),
+				function (lng) {
+					return _elm_lang$core$Json_Decode$succeed(
+						{lat: lat, lng: lng});
+				});
+		}));
+var _user$project$GMPorts$addToMarker = _elm_lang$core$Native_Platform.incomingPort(
+	'addToMarker',
+	A2(
+		_elm_lang$core$Json_Decode$andThen,
+		A2(
+			_elm_lang$core$Json_Decode_ops[':='],
+			'pos',
+			A2(
+				_elm_lang$core$Json_Decode$andThen,
+				A2(_elm_lang$core$Json_Decode_ops[':='], 'lat', _elm_lang$core$Json_Decode$float),
+				function (lat) {
+					return A2(
+						_elm_lang$core$Json_Decode$andThen,
+						A2(_elm_lang$core$Json_Decode_ops[':='], 'lng', _elm_lang$core$Json_Decode$float),
+						function (lng) {
+							return _elm_lang$core$Json_Decode$succeed(
+								{lat: lat, lng: lng});
+						});
+				})),
+		function (pos) {
+			return A2(
+				_elm_lang$core$Json_Decode$andThen,
+				A2(_elm_lang$core$Json_Decode_ops[':='], 'value', _elm_lang$core$Json_Decode$float),
+				function (value) {
+					return _elm_lang$core$Json_Decode$succeed(
+						{pos: pos, value: value});
+				});
+		}));
+var _user$project$GMPorts$updateMarker = _elm_lang$core$Native_Platform.incomingPort(
+	'updateMarker',
+	A2(
+		_elm_lang$core$Json_Decode$andThen,
+		A2(
+			_elm_lang$core$Json_Decode_ops[':='],
+			'pos',
+			A2(
+				_elm_lang$core$Json_Decode$andThen,
+				A2(_elm_lang$core$Json_Decode_ops[':='], 'lat', _elm_lang$core$Json_Decode$float),
+				function (lat) {
+					return A2(
+						_elm_lang$core$Json_Decode$andThen,
+						A2(_elm_lang$core$Json_Decode_ops[':='], 'lng', _elm_lang$core$Json_Decode$float),
+						function (lng) {
+							return _elm_lang$core$Json_Decode$succeed(
+								{lat: lat, lng: lng});
+						});
+				})),
+		function (pos) {
+			return A2(
+				_elm_lang$core$Json_Decode$andThen,
+				A2(_elm_lang$core$Json_Decode_ops[':='], 'value', _elm_lang$core$Json_Decode$float),
+				function (value) {
+					return _elm_lang$core$Json_Decode$succeed(
+						{pos: pos, value: value});
+				});
+		}));
+var _user$project$GMPorts$sendChartVal = _elm_lang$core$Native_Platform.outgoingPort(
+	'sendChartVal',
+	function (v) {
+		return _elm_lang$core$Native_List.toArray(v).map(
+			function (v) {
+				return {
+					pos: {lat: v.pos.lat, lng: v.pos.lng},
+					value: v.value
+				};
+			});
+	});
