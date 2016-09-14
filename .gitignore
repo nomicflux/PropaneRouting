@@ -1,0 +1,6 @@
+src/Elm/elm-stuff
+dist/
+.cabal/
+*~
+.stack-work/
+*.swp

@@ -189,5 +189,5 @@
   (major1) == 1 && (major2) <  22 || \
   (major1) == 1 && (major2) == 22 && (minor) <= 0)
 
-#define CURRENT_PACKAGE_KEY "blogt_7GDK56id6rkBAJs6GJSlft"
+#define CURRENT_PACKAGE_KEY "gasma_BNecqd5O8NdEfvcT55ZjjS"
 

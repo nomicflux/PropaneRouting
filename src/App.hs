@@ -12,8 +12,13 @@ import System.Log.FastLogger (LoggerSet, LogStr, pushLogStrLn)
 import Data.Maybe (fromMaybe)
 import Text.Read (readMaybe)
 
-type BlogPostID = Int64
-type Email = String
+type HubID = Int64
+type TankID = Int64
+type ReadingID = Int64
+type Reading = Int
+type Lat = Double
+type Lng = Double
+data Position = Position Lat Lng
 
 type DBPool = Pool Connection
 

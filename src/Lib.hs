@@ -25,11 +25,11 @@ import App (Config ( .. )
            , LogTo ( .. )
            , lookupEnvDefault
            )
-import Api.User
-import Api.BlogPost
-
-type API = "users" :> UserAPI
-      :<|> "posts" :> BlogPostAPI
+import Api.Hub
+import Api.Tank
+import Api.Reading
+import ElmGen
+import Servant.Elm (specsToDir)
 
 data ConnectionInfo = ConnectionInfo
                       { connUser :: String
@@ -39,17 +39,17 @@ data ConnectionInfo = ConnectionInfo
 
 instance Default ConnectionInfo where
   def = ConnectionInfo
-        { connUser = "blogtutorial"
-        , connPassword = "blogtutorial"
-        , connDatabase = "blogtutorial"
+        { connUser = "gasmasters"
+        , connPassword = "oscarMeyerPadThai"
+        , connDatabase = "gasmasters"
         }
 
 getConnInfo :: IO ConnectionInfo
 getConnInfo =
   ConnectionInfo <$>
-    lookupEnvDefault "SERVANT_PG_USER" (connUser def) <*>
-    lookupEnvDefault "SERVANT_PG_PWD" (connPassword def) <*>
-    lookupEnvDefault "SERVANT_PG_DB" (connDatabase def)
+    lookupEnvDefault "GM_PG_USER" (connUser def) <*>
+    lookupEnvDefault "GM_PG_PWD" (connPassword def) <*>
+    lookupEnvDefault "GM_PG_DB" (connDatabase def)
 
 connInfoToPG :: ConnectionInfo -> PGS.ConnectInfo
 connInfoToPG connInfo = PGS.defaultConnectInfo
@@ -79,27 +79,35 @@ makeMiddleware logger env = case env of
 
 startApp :: [String] -> IO ()
 startApp args = do
-  port <- lookupEnvDefault "SERVANT_PORT" 8080
-  env <- lookupEnvDefault "SERVANT_ENV" Production
+  port <- lookupEnvDefault "GM_PORT" 8080
+  env <- lookupEnvDefault "GM_ENV" Production
   logTo <- case listToMaybe args of
     Just filename -> return $ File filename
-    Nothing -> lookupEnvDefault "SERVANT_LOG" STDOut
+    Nothing -> lookupEnvDefault "GM_LOG" STDOut
   pool <- Pool.createPool openConnection PGS.close 1 10 5
   logger <- makeLogger logTo
   midware <- makeMiddleware logger env
   FL.pushLogStrLn logger $ FL.toLogStr $
-    "Listening on port " ++ show port ++ " at level " ++ show env ++ " and logging to "  ++ show logTo ++ " with args " ++ unwords args
+    "Listening on port " ++ show port ++ " at level " ++ show env ++ " and logging to "  ++ show logTo ++ (if null args then " with no args " else " with args " ++ unwords args)
+  -- specsToDir [hubSpec, tankSpec, readingSpec] "src/Elm"
   Warp.run port $ midware $ app (Config pool logger)
 
 readerTToExcept :: Config -> AppM :~> ExceptT S.ServantErr IO
 readerTToExcept pool = S.Nat (\r -> runReaderT r pool)
 
+type API' = "hubs" :> HubAPI
+      :<|> "tanks" :> TankAPI
+      :<|> "readings" :> ReadingAPI
+
+type API = API' :<|> S.Raw
+
+server :: S.ServerT API' AppM
+server = hubServer
+    :<|> tankServer
+    :<|> readingServer
+
 app :: Config -> Wai.Application
-app pool = S.serve api $ S.enter (readerTToExcept pool) server
+app pool = S.serve api $ (S.enter (readerTToExcept pool) server) :<|> S.serveDirectory "public"
 
 api :: S.Proxy API
 api = S.Proxy
-
-server :: S.ServerT API AppM
-server = userServer
-    :<|> blogPostServer
