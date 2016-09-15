@@ -80,7 +80,7 @@ update msg model =
             in ( model, Cmd.batch (List.map (\c -> Reading.getByTank c.id |> Task.perform Failure (AddReadings c.id)) model.charts))
 
 svgWidth : Float
-svgWidth = 800
+svgWidth = 600
 
 svgHeight : Float
 svgHeight = 400
@@ -134,7 +134,7 @@ renderVals chart =
         (minXVal, maxXVal) = getRange xvals
         maxX = maxXVal - minXVal + xoffset
         xstep = (svgWidth - xoffset) / maxX
-        xSize = (maxXVal - minXVal) * xstep -- (toFloat numVals) * xstep
+        xSize = maxX * xstep -- (toFloat numVals) * xstep
         left = xoffset - xstep / 4
         right = xSize + xoffset - xstep
         bottom = svgHeight - minYVal * ystep - ystep/2
