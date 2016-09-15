@@ -46,7 +46,7 @@ getReadingById readingID = do
 getReadingsByTank :: TankID -> AppM [ReadingRead]
 getReadingsByTank tankID = do
   con <- getConn
-  liftIO $ O.runQuery con (readingsByTankQuery tankID)
+  liftIO $ O.runQuery con (O.orderBy (O.asc readingSensorSent) $ readingsByTankQuery tankID)
 
 getReadingsByHub :: HubID -> AppM [ReadingRead]
 getReadingsByHub hubID = do

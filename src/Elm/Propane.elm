@@ -14,90 +14,94 @@ import Array as A
 import Task
 import Http
 import Debug
-import Generated.HubAPI as Hub
-import Generated.TankAPI as Tank
-import Generated.ReadingAPI as Reading
+import Time exposing (Time, second)
+import HubAPI as Hub
+import TankAPI as Tank
+import ReadingAPI as Reading
 
-type alias Chart = { id : GMPos, values : A.Array Float }
-type alias Model = { charts : List Chart, numCharts : Int, currChart : Maybe GMPos }
+type alias Chart = { id : ChartID, pos : GMPos, values : A.Array ChartPt, yellow : Float, red : Float }
+type alias Model = { charts : List Chart, numCharts : Int, currChart : Maybe ChartID }
 
-type Msg = AddToChart GMPos Float
-         | UpdateChart GMPos Float
-         | ClearChart GMPos
-         | AddChart GMPos
-         | MarkerClicked GMPos
-         | AddHub (List Reading.ReadingRead)
+type Msg = ClearChart ChartID
+         | AddChart (ChartID, GMPos, Float, Float)
+         | MarkerClicked ChartID
+         | AddHub (Maybe Hub.HubRead)
+         | AddTanks (List Tank.TankRead)
+         | AddReadings ChartID (List Reading.ReadingRead)
          | Failure Http.Error
+         | Tick Time
 
 getLast : A.Array number -> number
 getLast arr = Maybe.withDefault 0 (A.get (A.length arr - 1) arr)
 
-startingVals : A.Array Float
-startingVals = A.fromList [10]
-
-blankChart : Chart
-blankChart = { id = {lat = 0, lng = 0}
-             , values = startingVals
-             }
-
 initialModel : Model
 initialModel = { charts = [ ], numCharts = 0, currChart = Nothing }
 
-addToChart : Chart -> Float -> Chart
-addToChart chart val =
-    { chart | values = A.push val chart.values }
-
-updateChart : Chart -> Float -> Chart
-updateChart chart val =
-    let recentVal = getLast chart.values
-        newVal = Basics.max (recentVal + val) 0
-    in { chart | values = A.push newVal chart.values}
+addReadings : ChartID -> List Reading.ReadingRead -> Chart -> Chart
+addReadings id vals chart =
+    if chart.id /= id
+        then chart
+        else { chart | values = A.fromList (List.map (\v -> {x = v.readingSensorSent, y = v.readingValue}) vals) }
 
 clearChart : Chart -> Chart
 clearChart chart =
     let lastVal = A.get (A.length chart.values - 1) chart.values
-    in { chart | values = A.fromList [Maybe.withDefault 10 lastVal] }
+    in { chart | values = A.fromList [] }
 
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
     case msg of
-        AddToChart idx val ->
-            let newCharts = List.map (\c -> if c.id == idx then addToChart c val else c) model.charts
-            in ({ model | charts = newCharts}, Cmd.none )
-        UpdateChart idx val ->
-            let newCharts = List.map (\c -> if c.id == idx then updateChart c val else c) model.charts
-                latestVals = List.filter (\x -> x.value < 5) (List.map (\c -> {pos = c.id, value = Maybe.withDefault 0 (A.get (A.length c.values - 1) c.values)} ) model.charts)
-            in ({ model | charts = newCharts}, sendChartVal latestVals )
         ClearChart idx ->
             let newCharts = List.map (\c -> if c.id == idx then clearChart c else c) model.charts
             in ({ model | charts = newCharts}, Cmd.none )
-        AddChart pos ->
-            let newChart = { blankChart | id = pos }
+        AddChart (id, pos, yellow, red) ->
+            let newChart = { id = id, pos = pos, values = A.fromList [], yellow = yellow, red = red }
                 newCt = model.numCharts + 1
             in ( { model | charts = newChart :: model.charts, numCharts = newCt }, Cmd.none)
         MarkerClicked pos ->
             ( { model | currChart = Just pos }, Cmd.none )
-        AddHub hub ->
-            let _ = Debug.log (toString hub) hub
-            in (model, Cmd.none )
+        AddHub mhub ->
+            case mhub of
+                Nothing -> ( model, Cmd.none )
+                Just hub -> ( model, Cmd.batch
+                                  [ addHub {lat = hub.hubLat, lng = hub.hubLng}
+                                  , Task.perform Failure AddTanks (Tank.getByHub 1)])
+        AddTanks tanks ->
+            ( model, Cmd.batch (List.map (\t -> addTank (t.tankId, {lat=t.tankLat, lng=t.tankLng}, t.tankYellow, t.tankRed)) tanks))
+        AddReadings idx readings ->
+            let newCharts = List.map (addReadings idx readings) model.charts
+            in ({ model | charts = newCharts}, Cmd.none )
         Failure err ->
             let _ = Debug.log (toString err) err
             in ( model, Cmd.none )
+        Tick newTime ->
+            let readings = Debug.log "Readings"
+
+            in ( model, Cmd.batch (List.map (\c -> Reading.getByTank c.id |> Task.perform Failure (AddReadings c.id)) model.charts))
 
 svgWidth : Float
 svgWidth = 800
 
 svgHeight : Float
-svgHeight = 200
+svgHeight = 400
 
-xstep : Float
-xstep = 5
+maxY : Float
+maxY = 4096
+
+maxX : Float
+maxX = 512
 
 xoffset : Float
-xoffset = 20
+xoffset = 15
+
+yoffset : Float
+yoffset = 0
+
+xstep : Float
+xstep = (svgWidth - xoffset) / maxX
 
 ystep : Float
-ystep = 10
+ystep = (svgHeight - yoffset) / maxY
 
 getRange : A.Array Float -> (Float, Float)
 getRange arr =
@@ -114,23 +118,39 @@ arrzip: A.Array a -> A.Array b -> List (a, b)
 arrzip arr1 arr2 =
     List.map2 (,) (A.toList arr1) (A.toList arr2)
 
-renderVals : A.Array Float -> Html Msg
-renderVals vals =
-    let (minVal, maxVal) = getRange vals
-        numVals = A.length vals
-        xSize = (toFloat numVals) * xstep
+color : Float -> Float -> Float -> String
+color red yellow val =
+    if val <= yellow then "green"
+    else if val <= red then "yellow"
+         else "red"
+
+renderVals : Chart -> Html Msg
+renderVals chart =
+    let vals = chart.values
+        yvals = A.map (\v -> v.y) vals
+        xvals = A.map (\v -> v.x) vals
+        numVals = A.length xvals
+        (minYVal, maxYVal) = getRange yvals
+        (minXVal, maxXVal) = getRange xvals
+        xSize = (maxXVal - minXVal) * xstep -- (toFloat numVals) * xstep
         left = xoffset - xstep / 4
         right = xSize + xoffset - xstep
-        bottom = svgHeight - minVal * ystep - ystep/2
-        top = svgHeight - (maxVal + 1) * ystep + ystep/2
+        bottom = svgHeight - minYVal * ystep - ystep/2
+        top = svgHeight - (maxYVal + 1) * ystep + ystep/2
         leftBar = Svg.line [ S.y1 (toString bottom), S.y2 (toString top)
                            , S.x1 "0", S.x2 "0", S.color "black", S.strokeWidth "5" ] []
         bottomBar = Svg.line [ S.y1 (toString svgHeight), S.y2 (toString svgHeight)
                              , S.x1 (toString left), S.x2 (toString right)
                              , S.color "black", S.strokeWidth "5"] []
+        calcX x = xstep * (x - minXVal) + xstep / 2
+        -- _ = Debug.log "XMax" maxXVal * xstep
+        -- _ = Debug.log "XMax1" (maxXVal - minXVal)*xstep
+        -- _ = Debug.log "XMax2" (maxX * xstep)
         calcY y = svgHeight - ystep * y - ystep / 2
-        ypts = A.map calcY vals
-        xpts = A.initialize numVals (toFloat >> (*) xstep >> (+) xoffset)
+        coloring = color (calcY chart.red) (calcY chart.yellow)
+        ypts = A.map calcY yvals
+        xpts = A.map calcX xvals
+        -- xpts = A.initialize numVals (toFloat >> (*) xstep >> (+) xoffset)
         ymarginals = A.map (\y -> Svg.line [ S.x1 "0", S.x2 "5", S.strokeWidth "1"
                                            , S.y1 (toString y), S.y2 (toString y)
                                            ] []) ypts
@@ -141,7 +161,7 @@ renderVals vals =
         pts = List.map (\ (x,y) -> Svg.circle [ S.cx (toString x)
                                            , S.cy (toString y)
                                            , S.r "3"
-                                           , S.fill "red"
+                                           , coloring y |> S.fill
                                            ] [] ) (arrzip xpts ypts)
         lines = if A.isEmpty ypts then []
                 else let ay = Maybe.withDefault -1 (A.get 0 ypts)
@@ -164,16 +184,16 @@ renderVals vals =
             (leftBar :: bottomBar :: allTogether)
 
 chartLocation : Chart -> String
-chartLocation chart = toString chart.id.lat ++ ", " ++ toString chart.id.lng
+chartLocation chart = toString chart.id
 
 viewChart : Chart -> Html Msg
 viewChart chart =
     div [ class "chart-region" ]
      [ div [] [ text ("Chart for Location " ++ chartLocation chart) ]
      , div [] [ button [ onClick (ClearChart chart.id) ] [ text "Clear Chart" ] ]
-     , div [] [ button [ onClick (UpdateChart chart.id 10.0) ] [ text "Refill Tank" ] ]
-     , div [] [ button [ onClick (UpdateChart chart.id -20.0) ] [ text "Empty Tank" ] ]
-     , div [ class "chart" ] [ renderVals chart.values ] ]
+     -- , div [] [ button [ onClick (UpdateChart chart.id 10.0) ] [ text "Refill Tank" ] ]
+     -- , div [] [ button [ onClick (UpdateChart chart.id -20.0) ] [ text "Empty Tank" ] ]
+     , div [ class "chart" ] [ renderVals chart ] ]
 
 getCurrentCharts : Model -> List Chart
 getCurrentCharts model =
@@ -192,14 +212,15 @@ subscriptions model =
     Sub.batch
         [ addMarker AddChart
         , markerClicked MarkerClicked
-        , addToMarker (\poswval -> AddToChart poswval.pos poswval.value)
-        , updateMarker (\poswval -> UpdateChart poswval.pos poswval.value)
+        -- , addToMarker (\chartval -> AddToChart chartval.id chartval.value)
+        -- , updateMarker (\chartval -> UpdateChart chartval.id chartval.value)
+        , Time.every second Tick
         ]
 
 main : Program Never
 main =
     Html.App.program
-        { init = (initialModel, Task.perform Failure AddHub (Reading.get))
+        { init = (initialModel, Task.perform Failure AddHub (Hub.getById 1))
         , view = view
         , update = update
         , subscriptions = subscriptions

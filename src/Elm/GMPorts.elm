@@ -2,12 +2,20 @@ port module GMPorts exposing (..)
 
 import SharedModels exposing (..)
 
-port addMarker : (GMPos -> msg) -> Sub msg
+-- Incoming
 
-port markerClicked : (GMPos -> msg) -> Sub msg
+port addMarker : ((ChartID, GMPos, Float, Float) -> msg) -> Sub msg
 
-port addToMarker : (GMPosWVal -> msg) -> Sub msg
+port markerClicked : (ChartID -> msg) -> Sub msg
 
-port updateMarker : (GMPosWVal -> msg) -> Sub msg
+-- port addToMarker : (ChartVal -> msg) -> Sub msg
 
-port sendChartVal : List GMPosWVal -> Cmd msg
+-- port updateMarker : (ChartVal -> msg) -> Sub msg
+
+-- Outgoing
+
+port addHub : GMPos -> Cmd msg
+
+port addTank : (ChartID, GMPos, Float, Float) -> Cmd msg
+
+-- port sendChartVal : List ChartVal -> Cmd msg

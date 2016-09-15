@@ -18,20 +18,16 @@ function initMap() {
     var gmap = new google.maps.Map(map, mapOptions);
     var scale = 0.03;
 
-    var startPos = new google.maps.LatLng({lat: lat + Math.random()*2*scale - scale, lng: lng + Math.random()*2*scale - scale});
-    var startMarker = new google.maps.Marker({
-        position: startPos,
-        map: gmap,
-        icon: "Google Maps Markers/blue_MarkerP.png"
-    });
+    var startPos = null;
 
-    var directionsDisplay = new google.maps.DirectionsRenderer({preserveViewport: true});
+    var directionsDisplay = new google.maps.DirectionsRenderer({preserveViewport: true,
+                                                                suppressMarkers: true});
     directionsDisplay.setMap(gmap);
     var directionsService = new google.maps.DirectionsService;
 
     var timesCalled = 0;
     var redoDirections = function() {
-        if(areSymDiff(pastWaypoints, currentWaypoints)) {
+        if(startPos !== null && areSymDiff(pastWaypoints, currentWaypoints)) {
             var directionsReq = {
                 origin: startPos,
                 destination: startPos,
@@ -55,39 +51,50 @@ function initMap() {
         }
     };
 
-    app.ports.sendChartVal.subscribe(function(vals) {
-        var lowMarkers = {};
-        currentWaypoints = {};
-        for(var i = 0; i < vals.length; i++) {
-            var k = vals[i].pos.lat.toString() + "," + vals[i].pos.lng.toString();
-            currentWaypoints[k] = {location: vals[i].pos, stopover: true};
-            if(markers[k].getAnimation() == null) {
-                markers[k].setAnimation(google.maps.Animation.BOUNCE);
-            }
-            lowMarkers[k] = true;
-        }
-        for(var m in markers) {
-            if(!lowMarkers.hasOwnProperty(m)) {
-                markers[m].setAnimation(null);
-            }
-        }
+    app.ports.addHub.subscribe(function(pos) {
+        startPos = pos;
+        var startMarker = new google.maps.Marker({
+            position: pos,
+            map: gmap,
+            icon: "Google Maps Markers/brown_MarkerP.png"
+        });
     });
 
     var resolution = 1000;
-    for(var i = 0; i < 5; i++) {
-        var newLat = lat + Math.random()*2*scale - scale;
-        var newLng = lng + Math.random()*2*scale - scale;
-        var newPos = {lat: newLat, lng: newLng};
+    app.ports.addTank.subscribe(function(posyr) {
+        console.log(posyr);
+        var id = posyr[0];
+        var pos = posyr[1];
+        var yellow = posyr[2];
+        var red = posyr[3];
         var marker=new google.maps.Marker({
-            position:newPos,
+            position:pos,
             map: gmap
         });
-        app.ports.addMarker.send(newPos);
-        marker.addListener('click', markerCallback(app, newPos));
-        setInterval(sendDataCallback(app, newPos, i, newPos, redoDirections), resolution);
-        var k = newLat.toString() + "," + newLng.toString();
-        markers[k] = marker;
-    }
+        marker.addListener('click', markerCallback(app, id));
+        // setInterval(sendDataCallback(app, id, redoDirections), resolution);
+        markers[id] = marker;
+        app.ports.addMarker.send(posyr);
+    });
+
+    // app.ports.sendChartVal.subscribe(function(vals) {
+    //     var lowMarkers = {};
+    //     currentWaypoints = {};
+    //     for(var i = 0; i < vals.length; i++) {
+    //         var k = vals[i].id;
+    //         currentWaypoints[k] = {location: markers[k].position, stopover: true};
+    //         if(markers[k].getAnimation() == null) {
+    //             markers[k].setAnimation(google.maps.Animation.BOUNCE);
+    //         }
+    //         lowMarkers[k] = true;
+    //     }
+    //     for(var m in markers) {
+    //         if(!lowMarkers.hasOwnProperty(m)) {
+    //             markers[m].setAnimation(null);
+    //         }
+    //     }
+    // });
+
     setTimeout(function() { setInterval(redoDirections, resolution); }, 400);
 }
 
@@ -102,16 +109,16 @@ function directionCallback(display) {
     };
 }
 
-function markerCallback(app, pos) {
+function markerCallback(app, id) {
     return function() {
-        app.ports.markerClicked.send(pos);
+        app.ports.markerClicked.send(id);
     };
 }
 
-function sendDataCallback(app, pos, id, latlng, displaycb) {
+function sendDataCallback(app, id, displaycb) {
     return function() {
         var value = Math.random()*3 - 1.6;
-        app.ports.updateMarker.send({pos: pos, value: value});
+        app.ports.updateMarker.send({id: id, value: value});
     };
 }
 

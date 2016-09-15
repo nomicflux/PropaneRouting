@@ -1,4 +1,4 @@
-module Generated.TankAPI exposing (..)
+module TankAPI exposing (..)
 
 import Json.Decode exposing ((:=))
 import Json.Decode.Extra exposing ((|:))
@@ -13,8 +13,8 @@ type alias TankRead =
   { tankId : Int
   , tankHub : Int
   , tankName : String
-  , tankYellow : Int
-  , tankRed : Int
+  , tankYellow : Float
+  , tankRed : Float
   , tankLat : Float
   , tankLng : Float
   }
@@ -25,8 +25,8 @@ decodeTankRead =
     |: ("id" := Json.Decode.int)
     |: ("hub" := Json.Decode.int)
     |: ("name" := Json.Decode.string)
-    |: ("yellow" := Json.Decode.int)
-    |: ("red" := Json.Decode.int)
+    |: ("yellow" := Json.Decode.float)
+    |: ("red" := Json.Decode.float)
     |: ("lat" := Json.Decode.float)
     |: ("lng" := Json.Decode.float)
 
@@ -37,8 +37,8 @@ encodeTankRead x =
     [ ( "id", Json.Encode.int x.tankId )
     , ( "hub", Json.Encode.int x.tankHub )
     , ( "name", Json.Encode.string x.tankName )
-    , ( "yellow", Json.Encode.int x.tankYellow )
-    , ( "red", Json.Encode.int x.tankRed )
+    , ( "yellow", Json.Encode.float x.tankYellow )
+    , ( "red", Json.Encode.float x.tankRed )
     , ( "lat", Json.Encode.float x.tankLat )
     , ( "lng", Json.Encode.float x.tankLng )
     ]
