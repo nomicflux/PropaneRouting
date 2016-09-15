@@ -40,7 +40,7 @@ get =
       , headers =
           [("Content-Type", "application/json")]
       , url =
-          "http://127.0.0.1:8080/hubs"
+          "/hubs"
       , body =
           Http.empty
       }
@@ -58,7 +58,7 @@ getById id =
       , headers =
           [("Content-Type", "application/json")]
       , url =
-          "http://127.0.0.1:8080/hubs/" ++ (id |> toString |> Http.uriEncode)
+          "/hubs/" ++ (id |> toString |> Http.uriEncode)
       , body =
           Http.empty
       }
@@ -100,7 +100,7 @@ post body =
       , headers =
           [("Content-Type", "application/json")]
       , url =
-          "hubs"
+          "/hubs"
       , body =
           Http.string (Json.Encode.encode 0 (encodeHubWrite body))
       }
