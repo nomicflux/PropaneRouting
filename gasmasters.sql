@@ -75,7 +75,7 @@ ALTER SEQUENCE hubs_id_seq OWNED BY hubs.id;
 CREATE TABLE readings (
     id integer NOT NULL,
     tank integer NOT NULL,
-    databasereceived timestamp with time zone DEFAULT now(),
+    dbreceived timestamp with time zone DEFAULT now(),
     sensorsent timestamp with time zone NOT NULL,
     value integer NOT NULL
 );
