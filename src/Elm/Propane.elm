@@ -11,6 +11,12 @@ import Svg.Attributes as S
 import SharedModels exposing (..)
 import GMPorts exposing (..)
 import Array as A
+import Task
+import Http
+import Debug
+import Generated.HubAPI as Hub
+-- import Generated.TankAPI as Tank
+-- import Generated.ReadingAPI as Reading
 
 type alias Chart = { id : GMPos, values : A.Array Float }
 type alias Model = { charts : List Chart, numCharts : Int, currChart : Maybe GMPos }
@@ -20,6 +26,8 @@ type Msg = AddToChart GMPos Float
          | ClearChart GMPos
          | AddChart GMPos
          | MarkerClicked GMPos
+         | AddHub (Maybe Hub.HubRead)
+         | Failure Http.Error
 
 getLast : A.Array number -> number
 getLast arr = Maybe.withDefault 0 (A.get (A.length arr - 1) arr)
@@ -69,6 +77,12 @@ update msg model =
             in ( { model | charts = newChart :: model.charts, numCharts = newCt }, Cmd.none)
         MarkerClicked pos ->
             ( { model | currChart = Just pos }, Cmd.none )
+        AddHub hub ->
+            let _ = Debug.log (toString hub) hub
+            in (model, Cmd.none )
+        Failure err ->
+            let _ = Debug.log (toString err) err
+            in ( model, Cmd.none )
 
 svgWidth : Float
 svgWidth = 800
@@ -185,7 +199,7 @@ subscriptions model =
 main : Program Never
 main =
     Html.App.program
-        { init = (initialModel, Cmd.none)
+        { init = (initialModel, Task.perform Failure AddHub (Hub.getById 1))
         , view = view
         , update = update
         , subscriptions = subscriptions

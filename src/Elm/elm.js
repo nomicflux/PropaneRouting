@@ -6921,121 +6921,85 @@ var _evancz$elm_http$Http$post = F3(
 			A2(_evancz$elm_http$Http$send, _evancz$elm_http$Http$defaultSettings, request));
 	});
 
-var _user$project$Generated_TankAPI$encodeTankWrite = function (x) {
+var _user$project$Generated_HubAPI$encodeHubWrite = function (x) {
 	return _elm_lang$core$Json_Encode$object(
 		_elm_lang$core$Native_List.fromArray(
 			[
 				{
 				ctor: '_Tuple2',
-				_0: 'tankId',
+				_0: 'hubId',
 				_1: A2(
 					_elm_lang$core$Maybe$withDefault,
 					_elm_lang$core$Json_Encode$null,
-					A2(_elm_lang$core$Maybe$map, _elm_lang$core$Json_Encode$int, x.tankId))
+					A2(_elm_lang$core$Maybe$map, _elm_lang$core$Json_Encode$int, x.hubId))
 			},
 				{
 				ctor: '_Tuple2',
-				_0: 'tankHub',
-				_1: _elm_lang$core$Json_Encode$int(x.tankHub)
+				_0: 'hubName',
+				_1: _elm_lang$core$Json_Encode$string(x.hubName)
 			},
 				{
 				ctor: '_Tuple2',
-				_0: 'tankName',
-				_1: _elm_lang$core$Json_Encode$string(x.tankName)
+				_0: 'hubLat',
+				_1: _elm_lang$core$Json_Encode$float(x.hubLat)
 			},
 				{
 				ctor: '_Tuple2',
-				_0: 'tankYellow',
-				_1: A2(
-					_elm_lang$core$Maybe$withDefault,
-					_elm_lang$core$Json_Encode$null,
-					A2(_elm_lang$core$Maybe$map, _elm_lang$core$Json_Encode$int, x.tankYellow))
-			},
-				{
-				ctor: '_Tuple2',
-				_0: 'tankRed',
-				_1: A2(
-					_elm_lang$core$Maybe$withDefault,
-					_elm_lang$core$Json_Encode$null,
-					A2(_elm_lang$core$Maybe$map, _elm_lang$core$Json_Encode$int, x.tankRed))
-			},
-				{
-				ctor: '_Tuple2',
-				_0: 'tankLat',
-				_1: _elm_lang$core$Json_Encode$float(x.tankLat)
-			},
-				{
-				ctor: '_Tuple2',
-				_0: 'tankLng',
-				_1: _elm_lang$core$Json_Encode$float(x.tankLng)
+				_0: 'hubLng',
+				_1: _elm_lang$core$Json_Encode$float(x.hubLng)
 			}
 			]));
 };
-var _user$project$Generated_TankAPI$post = function (body) {
+var _user$project$Generated_HubAPI$post = function (body) {
 	var request = {
 		verb: 'POST',
 		headers: _elm_lang$core$Native_List.fromArray(
 			[
 				{ctor: '_Tuple2', _0: 'Content-Type', _1: 'application/json'}
 			]),
-		url: '/tanks',
+		url: 'hubs',
 		body: _evancz$elm_http$Http$string(
 			A2(
 				_elm_lang$core$Json_Encode$encode,
 				0,
-				_user$project$Generated_TankAPI$encodeTankWrite(body)))
+				_user$project$Generated_HubAPI$encodeHubWrite(body)))
 	};
 	return A2(
 		_evancz$elm_http$Http$fromJson,
 		_elm_lang$core$Json_Decode$maybe(_elm_lang$core$Json_Decode$int),
 		A2(_evancz$elm_http$Http$send, _evancz$elm_http$Http$defaultSettings, request));
 };
-var _user$project$Generated_TankAPI$encodeTankRead = function (x) {
+var _user$project$Generated_HubAPI$encodeHubRead = function (x) {
 	return _elm_lang$core$Json_Encode$object(
 		_elm_lang$core$Native_List.fromArray(
 			[
 				{
 				ctor: '_Tuple2',
-				_0: 'tankId',
-				_1: _elm_lang$core$Json_Encode$int(x.tankId)
+				_0: 'hubId',
+				_1: _elm_lang$core$Json_Encode$int(x.hubId)
 			},
 				{
 				ctor: '_Tuple2',
-				_0: 'tankHub',
-				_1: _elm_lang$core$Json_Encode$int(x.tankHub)
+				_0: 'hubName',
+				_1: _elm_lang$core$Json_Encode$string(x.hubName)
 			},
 				{
 				ctor: '_Tuple2',
-				_0: 'tankName',
-				_1: _elm_lang$core$Json_Encode$string(x.tankName)
+				_0: 'hubLat',
+				_1: _elm_lang$core$Json_Encode$float(x.hubLat)
 			},
 				{
 				ctor: '_Tuple2',
-				_0: 'tankYellow',
-				_1: _elm_lang$core$Json_Encode$int(x.tankYellow)
-			},
-				{
-				ctor: '_Tuple2',
-				_0: 'tankRed',
-				_1: _elm_lang$core$Json_Encode$int(x.tankRed)
-			},
-				{
-				ctor: '_Tuple2',
-				_0: 'tankLat',
-				_1: _elm_lang$core$Json_Encode$float(x.tankLat)
-			},
-				{
-				ctor: '_Tuple2',
-				_0: 'tankLng',
-				_1: _elm_lang$core$Json_Encode$float(x.tankLng)
+				_0: 'hubLng',
+				_1: _elm_lang$core$Json_Encode$float(x.hubLng)
 			}
 			]));
 };
-var _user$project$Generated_TankAPI$TankRead = F7(
-	function (a, b, c, d, e, f, g) {
-		return {tankId: a, tankHub: b, tankName: c, tankYellow: d, tankRed: e, tankLat: f, tankLng: g};
+var _user$project$Generated_HubAPI$HubRead = F4(
+	function (a, b, c, d) {
+		return {hubId: a, hubName: b, hubLat: c, hubLng: d};
 	});
-var _user$project$Generated_TankAPI$decodeTankRead = A2(
+var _user$project$Generated_HubAPI$decodeHubRead = A2(
 	_elm_community$json_extra$Json_Decode_Extra_ops['|:'],
 	A2(
 		_elm_community$json_extra$Json_Decode_Extra_ops['|:'],
@@ -7043,36 +7007,27 @@ var _user$project$Generated_TankAPI$decodeTankRead = A2(
 			_elm_community$json_extra$Json_Decode_Extra_ops['|:'],
 			A2(
 				_elm_community$json_extra$Json_Decode_Extra_ops['|:'],
-				A2(
-					_elm_community$json_extra$Json_Decode_Extra_ops['|:'],
-					A2(
-						_elm_community$json_extra$Json_Decode_Extra_ops['|:'],
-						A2(
-							_elm_community$json_extra$Json_Decode_Extra_ops['|:'],
-							_elm_lang$core$Json_Decode$succeed(_user$project$Generated_TankAPI$TankRead),
-							A2(_elm_lang$core$Json_Decode_ops[':='], 'tankId', _elm_lang$core$Json_Decode$int)),
-						A2(_elm_lang$core$Json_Decode_ops[':='], 'tankHub', _elm_lang$core$Json_Decode$int)),
-					A2(_elm_lang$core$Json_Decode_ops[':='], 'tankName', _elm_lang$core$Json_Decode$string)),
-				A2(_elm_lang$core$Json_Decode_ops[':='], 'tankYellow', _elm_lang$core$Json_Decode$int)),
-			A2(_elm_lang$core$Json_Decode_ops[':='], 'tankRed', _elm_lang$core$Json_Decode$int)),
-		A2(_elm_lang$core$Json_Decode_ops[':='], 'tankLat', _elm_lang$core$Json_Decode$float)),
-	A2(_elm_lang$core$Json_Decode_ops[':='], 'tankLng', _elm_lang$core$Json_Decode$float));
-var _user$project$Generated_TankAPI$get = function () {
+				_elm_lang$core$Json_Decode$succeed(_user$project$Generated_HubAPI$HubRead),
+				A2(_elm_lang$core$Json_Decode_ops[':='], 'hubId', _elm_lang$core$Json_Decode$int)),
+			A2(_elm_lang$core$Json_Decode_ops[':='], 'hubName', _elm_lang$core$Json_Decode$string)),
+		A2(_elm_lang$core$Json_Decode_ops[':='], 'hubLat', _elm_lang$core$Json_Decode$float)),
+	A2(_elm_lang$core$Json_Decode_ops[':='], 'hubLng', _elm_lang$core$Json_Decode$float));
+var _user$project$Generated_HubAPI$get = function () {
 	var request = {
 		verb: 'GET',
 		headers: _elm_lang$core$Native_List.fromArray(
 			[
 				{ctor: '_Tuple2', _0: 'Content-Type', _1: 'application/json'}
 			]),
-		url: '/tanks',
+		url: 'http://127.0.0.1:8080/hubs',
 		body: _evancz$elm_http$Http$empty
 	};
 	return A2(
 		_evancz$elm_http$Http$fromJson,
-		_elm_lang$core$Json_Decode$list(_user$project$Generated_TankAPI$decodeTankRead),
+		_elm_lang$core$Json_Decode$list(_user$project$Generated_HubAPI$decodeHubRead),
 		A2(_evancz$elm_http$Http$send, _evancz$elm_http$Http$defaultSettings, request));
 }();
-var _user$project$Generated_TankAPI$getById = function (id) {
+var _user$project$Generated_HubAPI$getById = function (id) {
 	var request = {
 		verb: 'GET',
 		headers: _elm_lang$core$Native_List.fromArray(
@@ -7081,46 +7036,21 @@ var _user$project$Generated_TankAPI$getById = function (id) {
 			]),
 		url: A2(
 			_elm_lang$core$Basics_ops['++'],
-			'/tanks/',
+			'http://127.0.0.1:8080/hubs/',
 			_evancz$elm_http$Http$uriEncode(
 				_elm_lang$core$Basics$toString(id))),
 		body: _evancz$elm_http$Http$empty
 	};
 	return A2(
 		_evancz$elm_http$Http$fromJson,
-		_elm_lang$core$Json_Decode$maybe(_user$project$Generated_TankAPI$decodeTankRead),
+		_elm_lang$core$Json_Decode$maybe(_user$project$Generated_HubAPI$decodeHubRead),
 		A2(_evancz$elm_http$Http$send, _evancz$elm_http$Http$defaultSettings, request));
 };
-var _user$project$Generated_TankAPI$getHubByHub = function (hub) {
-	var request = {
-		verb: 'GET',
-		headers: _elm_lang$core$Native_List.fromArray(
-			[
-				{ctor: '_Tuple2', _0: 'Content-Type', _1: 'application/json'}
-			]),
-		url: A2(
-			_elm_lang$core$Basics_ops['++'],
-			'/tanks/',
-			A2(
-				_elm_lang$core$Basics_ops['++'],
-				'hub',
-				A2(
-					_elm_lang$core$Basics_ops['++'],
-					'/',
-					_evancz$elm_http$Http$uriEncode(
-						_elm_lang$core$Basics$toString(hub))))),
-		body: _evancz$elm_http$Http$empty
-	};
-	return A2(
-		_evancz$elm_http$Http$fromJson,
-		_elm_lang$core$Json_Decode$list(_user$project$Generated_TankAPI$decodeTankRead),
-		A2(_evancz$elm_http$Http$send, _evancz$elm_http$Http$defaultSettings, request));
-};
-var _user$project$Generated_TankAPI$TankWrite = F7(
-	function (a, b, c, d, e, f, g) {
-		return {tankId: a, tankHub: b, tankName: c, tankYellow: d, tankRed: e, tankLat: f, tankLng: g};
+var _user$project$Generated_HubAPI$HubWrite = F4(
+	function (a, b, c, d) {
+		return {hubId: a, hubName: b, hubLat: c, hubLng: d};
 	});
-var _user$project$Generated_TankAPI$decodeTankWrite = A2(
+var _user$project$Generated_HubAPI$decodeHubWrite = A2(
 	_elm_community$json_extra$Json_Decode_Extra_ops['|:'],
 	A2(
 		_elm_community$json_extra$Json_Decode_Extra_ops['|:'],
@@ -7128,34 +7058,19 @@ var _user$project$Generated_TankAPI$decodeTankWrite = A2(
 			_elm_community$json_extra$Json_Decode_Extra_ops['|:'],
 			A2(
 				_elm_community$json_extra$Json_Decode_Extra_ops['|:'],
-				A2(
-					_elm_community$json_extra$Json_Decode_Extra_ops['|:'],
-					A2(
-						_elm_community$json_extra$Json_Decode_Extra_ops['|:'],
-						A2(
-							_elm_community$json_extra$Json_Decode_Extra_ops['|:'],
-							_elm_lang$core$Json_Decode$succeed(_user$project$Generated_TankAPI$TankWrite),
-							A2(
-								_elm_lang$core$Json_Decode_ops[':='],
-								'tankId',
-								_elm_lang$core$Json_Decode$maybe(_elm_lang$core$Json_Decode$int))),
-						A2(_elm_lang$core$Json_Decode_ops[':='], 'tankHub', _elm_lang$core$Json_Decode$int)),
-					A2(_elm_lang$core$Json_Decode_ops[':='], 'tankName', _elm_lang$core$Json_Decode$string)),
+				_elm_lang$core$Json_Decode$succeed(_user$project$Generated_HubAPI$HubWrite),
 				A2(
 					_elm_lang$core$Json_Decode_ops[':='],
-					'tankYellow',
+					'hubId',
 					_elm_lang$core$Json_Decode$maybe(_elm_lang$core$Json_Decode$int))),
-			A2(
-				_elm_lang$core$Json_Decode_ops[':='],
-				'tankRed',
-				_elm_lang$core$Json_Decode$maybe(_elm_lang$core$Json_Decode$int))),
-		A2(_elm_lang$core$Json_Decode_ops[':='], 'tankLat', _elm_lang$core$Json_Decode$float)),
-	A2(_elm_lang$core$Json_Decode_ops[':='], 'tankLng', _elm_lang$core$Json_Decode$float));
+			A2(_elm_lang$core$Json_Decode_ops[':='], 'hubName', _elm_lang$core$Json_Decode$string)),
+		A2(_elm_lang$core$Json_Decode_ops[':='], 'hubLat', _elm_lang$core$Json_Decode$float)),
+	A2(_elm_lang$core$Json_Decode_ops[':='], 'hubLng', _elm_lang$core$Json_Decode$float));
 
 var Elm = {};
 Elm['Generated'] = Elm['Generated'] || {};
-Elm['Generated']['TankAPI'] = Elm['Generated']['TankAPI'] || {};
-_elm_lang$core$Native_Platform.addPublicModule(Elm['Generated']['TankAPI'], 'Generated.TankAPI', typeof _user$project$Generated_TankAPI$main === 'undefined' ? null : _user$project$Generated_TankAPI$main);
+Elm['Generated']['HubAPI'] = Elm['Generated']['HubAPI'] || {};
+_elm_lang$core$Native_Platform.addPublicModule(Elm['Generated']['HubAPI'], 'Generated.HubAPI', typeof _user$project$Generated_HubAPI$main === 'undefined' ? null : _user$project$Generated_HubAPI$main);
 
 if (typeof define === "function" && define['amd'])
 {
