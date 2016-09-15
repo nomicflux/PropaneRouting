@@ -142,7 +142,7 @@ renderVals chart =
         bottomBar = Svg.line [ S.y1 (toString svgHeight), S.y2 (toString svgHeight)
                              , S.x1 (toString left), S.x2 (toString right)
                              , S.color "black", S.strokeWidth "5"] []
-        calcX x = xstep * (x - minXVal) + xstep / 2
+        calcX x = xstep * (x - minXVal) + xstep / 2 + xoffset
         -- _ = Debug.log "XMax" maxXVal * xstep
         -- _ = Debug.log "XMax1" (maxXVal - minXVal)*xstep
         -- _ = Debug.log "XMax2" (maxX * xstep)
