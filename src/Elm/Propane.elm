@@ -26,7 +26,7 @@ type Msg = AddToChart GMPos Float
          | ClearChart GMPos
          | AddChart GMPos
          | MarkerClicked GMPos
-         | AddHub (Maybe Hub.HubRead)
+         | AddHub (List Hub.HubRead)
          | Failure Http.Error
 
 getLast : A.Array number -> number
@@ -199,7 +199,7 @@ subscriptions model =
 main : Program Never
 main =
     Html.App.program
-        { init = (initialModel, Task.perform Failure AddHub (Hub.getById 1))
+        { init = (initialModel, Task.perform Failure AddHub (Hub.get))
         , view = view
         , update = update
         , subscriptions = subscriptions
