@@ -88,8 +88,8 @@ svgHeight = 400
 maxY : Float
 maxY = 4096
 
-maxX : Float
-maxX = 1024
+-- maxX : Float
+-- maxX = 1024
 
 xoffset : Float
 xoffset = 15
@@ -97,8 +97,8 @@ xoffset = 15
 yoffset : Float
 yoffset = 0
 
-xstep : Float
-xstep = (svgWidth - xoffset) / maxX
+-- xstep : Float
+-- xstep = (svgWidth - xoffset) / maxX
 
 ystep : Float
 ystep = (svgHeight - yoffset) / maxY
@@ -132,6 +132,8 @@ renderVals chart =
         numVals = A.length xvals
         (minYVal, maxYVal) = getRange yvals
         (minXVal, maxXVal) = getRange xvals
+        maxX = maxXVal - minXVal
+        xstep = (svgWidth - xoffset) / maxX
         xSize = (maxXVal - minXVal) * xstep -- (toFloat numVals) * xstep
         left = xoffset - xstep / 4
         right = xSize + xoffset - xstep
