@@ -6921,85 +6921,246 @@ var _evancz$elm_http$Http$post = F3(
 			A2(_evancz$elm_http$Http$send, _evancz$elm_http$Http$defaultSettings, request));
 	});
 
-var _user$project$Generated_HubAPI$encodeHubWrite = function (x) {
+var _krisajenkins$elm_exts$Exts_Date$monthNumber = function (date) {
+	var _p0 = _elm_lang$core$Date$month(date);
+	switch (_p0.ctor) {
+		case 'Jan':
+			return 1;
+		case 'Feb':
+			return 2;
+		case 'Mar':
+			return 3;
+		case 'Apr':
+			return 4;
+		case 'May':
+			return 5;
+		case 'Jun':
+			return 6;
+		case 'Jul':
+			return 7;
+		case 'Aug':
+			return 8;
+		case 'Sep':
+			return 9;
+		case 'Oct':
+			return 10;
+		case 'Nov':
+			return 11;
+		default:
+			return 12;
+	}
+};
+var _krisajenkins$elm_exts$Exts_Date$toRFC3339 = function (date) {
+	return A2(
+		_elm_lang$core$Basics_ops['++'],
+		_elm_lang$core$Basics$toString(
+			_elm_lang$core$Date$year(date)),
+		A2(
+			_elm_lang$core$Basics_ops['++'],
+			'-',
+			A2(
+				_elm_lang$core$Basics_ops['++'],
+				A3(
+					_elm_lang$core$String$padLeft,
+					2,
+					_elm_lang$core$Native_Utils.chr('0'),
+					_elm_lang$core$Basics$toString(
+						_krisajenkins$elm_exts$Exts_Date$monthNumber(date))),
+				A2(
+					_elm_lang$core$Basics_ops['++'],
+					'-',
+					A3(
+						_elm_lang$core$String$padLeft,
+						2,
+						_elm_lang$core$Native_Utils.chr('0'),
+						_elm_lang$core$Basics$toString(
+							_elm_lang$core$Date$day(date)))))));
+};
+var _krisajenkins$elm_exts$Exts_Date$toISOString = function (d) {
+	return A2(
+		_elm_lang$core$Basics_ops['++'],
+		A3(
+			_elm_lang$core$String$padLeft,
+			2,
+			_elm_lang$core$Native_Utils.chr('0'),
+			_elm_lang$core$Basics$toString(
+				_elm_lang$core$Date$year(d))),
+		A2(
+			_elm_lang$core$Basics_ops['++'],
+			'-',
+			A2(
+				_elm_lang$core$Basics_ops['++'],
+				A3(
+					_elm_lang$core$String$padLeft,
+					2,
+					_elm_lang$core$Native_Utils.chr('0'),
+					_elm_lang$core$Basics$toString(
+						_krisajenkins$elm_exts$Exts_Date$monthNumber(d))),
+				A2(
+					_elm_lang$core$Basics_ops['++'],
+					'-',
+					A2(
+						_elm_lang$core$Basics_ops['++'],
+						A3(
+							_elm_lang$core$String$padLeft,
+							2,
+							_elm_lang$core$Native_Utils.chr('0'),
+							_elm_lang$core$Basics$toString(
+								_elm_lang$core$Date$day(d))),
+						A2(
+							_elm_lang$core$Basics_ops['++'],
+							'T',
+							A2(
+								_elm_lang$core$Basics_ops['++'],
+								A3(
+									_elm_lang$core$String$padLeft,
+									2,
+									_elm_lang$core$Native_Utils.chr('0'),
+									_elm_lang$core$Basics$toString(
+										_elm_lang$core$Date$hour(d) - 1)),
+								A2(
+									_elm_lang$core$Basics_ops['++'],
+									':',
+									A2(
+										_elm_lang$core$Basics_ops['++'],
+										A3(
+											_elm_lang$core$String$padLeft,
+											2,
+											_elm_lang$core$Native_Utils.chr('0'),
+											_elm_lang$core$Basics$toString(
+												_elm_lang$core$Date$minute(d))),
+										A2(
+											_elm_lang$core$Basics_ops['++'],
+											':',
+											A2(
+												_elm_lang$core$Basics_ops['++'],
+												A3(
+													_elm_lang$core$String$padLeft,
+													2,
+													_elm_lang$core$Native_Utils.chr('0'),
+													_elm_lang$core$Basics$toString(
+														_elm_lang$core$Date$second(d))),
+												A2(
+													_elm_lang$core$Basics_ops['++'],
+													'.',
+													A2(
+														_elm_lang$core$Basics_ops['++'],
+														A3(
+															_elm_lang$core$String$padLeft,
+															3,
+															_elm_lang$core$Native_Utils.chr('0'),
+															_elm_lang$core$Basics$toString(
+																_elm_lang$core$Date$millisecond(d))),
+														'Z')))))))))))));
+};
+
+var _user$project$Generated_ReadingAPI$encodeReadingWrite = function (x) {
 	return _elm_lang$core$Json_Encode$object(
 		_elm_lang$core$Native_List.fromArray(
 			[
 				{
 				ctor: '_Tuple2',
-				_0: 'hubId',
+				_0: 'id',
 				_1: A2(
 					_elm_lang$core$Maybe$withDefault,
 					_elm_lang$core$Json_Encode$null,
-					A2(_elm_lang$core$Maybe$map, _elm_lang$core$Json_Encode$int, x.hubId))
+					A2(_elm_lang$core$Maybe$map, _elm_lang$core$Json_Encode$int, x.readingId))
 			},
 				{
 				ctor: '_Tuple2',
-				_0: 'hubName',
-				_1: _elm_lang$core$Json_Encode$string(x.hubName)
+				_0: 'tank',
+				_1: _elm_lang$core$Json_Encode$int(x.readingTank)
 			},
 				{
 				ctor: '_Tuple2',
-				_0: 'hubLat',
-				_1: _elm_lang$core$Json_Encode$float(x.hubLat)
+				_0: 'value',
+				_1: _elm_lang$core$Json_Encode$int(x.readingValue)
 			},
 				{
 				ctor: '_Tuple2',
-				_0: 'hubLng',
-				_1: _elm_lang$core$Json_Encode$float(x.hubLng)
+				_0: 'dbreceived',
+				_1: A2(
+					_elm_lang$core$Maybe$withDefault,
+					_elm_lang$core$Json_Encode$null,
+					A2(
+						_elm_lang$core$Maybe$map,
+						function (_p0) {
+							return _elm_lang$core$Json_Encode$string(
+								_krisajenkins$elm_exts$Exts_Date$toISOString(_p0));
+						},
+						x.readingDbReceived))
+			},
+				{
+				ctor: '_Tuple2',
+				_0: 'sensorsent',
+				_1: function (_p1) {
+					return _elm_lang$core$Json_Encode$string(
+						_krisajenkins$elm_exts$Exts_Date$toISOString(_p1));
+				}(x.readingSensorSent)
 			}
 			]));
 };
-var _user$project$Generated_HubAPI$post = function (body) {
+var _user$project$Generated_ReadingAPI$post = function (body) {
 	var request = {
 		verb: 'POST',
 		headers: _elm_lang$core$Native_List.fromArray(
 			[
 				{ctor: '_Tuple2', _0: 'Content-Type', _1: 'application/json'}
 			]),
-		url: 'hubs',
+		url: '/readings',
 		body: _evancz$elm_http$Http$string(
 			A2(
 				_elm_lang$core$Json_Encode$encode,
 				0,
-				_user$project$Generated_HubAPI$encodeHubWrite(body)))
+				_user$project$Generated_ReadingAPI$encodeReadingWrite(body)))
 	};
 	return A2(
 		_evancz$elm_http$Http$fromJson,
 		_elm_lang$core$Json_Decode$maybe(_elm_lang$core$Json_Decode$int),
 		A2(_evancz$elm_http$Http$send, _evancz$elm_http$Http$defaultSettings, request));
 };
-var _user$project$Generated_HubAPI$encodeHubRead = function (x) {
+var _user$project$Generated_ReadingAPI$encodeReadingRead = function (x) {
 	return _elm_lang$core$Json_Encode$object(
 		_elm_lang$core$Native_List.fromArray(
 			[
 				{
 				ctor: '_Tuple2',
-				_0: 'hubId',
-				_1: _elm_lang$core$Json_Encode$int(x.hubId)
+				_0: 'id',
+				_1: _elm_lang$core$Json_Encode$int(x.readingId)
 			},
 				{
 				ctor: '_Tuple2',
-				_0: 'hubName',
-				_1: _elm_lang$core$Json_Encode$string(x.hubName)
+				_0: 'tank',
+				_1: _elm_lang$core$Json_Encode$int(x.readingTank)
 			},
 				{
 				ctor: '_Tuple2',
-				_0: 'hubLat',
-				_1: _elm_lang$core$Json_Encode$float(x.hubLat)
+				_0: 'value',
+				_1: _elm_lang$core$Json_Encode$int(x.readingValue)
 			},
 				{
 				ctor: '_Tuple2',
-				_0: 'hubLng',
-				_1: _elm_lang$core$Json_Encode$float(x.hubLng)
+				_0: 'dbreceived',
+				_1: function (_p2) {
+					return _elm_lang$core$Json_Encode$string(
+						_krisajenkins$elm_exts$Exts_Date$toISOString(_p2));
+				}(x.readingDbReceived)
+			},
+				{
+				ctor: '_Tuple2',
+				_0: 'sensorsent',
+				_1: function (_p3) {
+					return _elm_lang$core$Json_Encode$string(
+						_krisajenkins$elm_exts$Exts_Date$toISOString(_p3));
+				}(x.readingSensorSent)
 			}
 			]));
 };
-var _user$project$Generated_HubAPI$HubRead = F4(
-	function (a, b, c, d) {
-		return {hubId: a, hubName: b, hubLat: c, hubLng: d};
+var _user$project$Generated_ReadingAPI$ReadingRead = F5(
+	function (a, b, c, d, e) {
+		return {readingId: a, readingTank: b, readingValue: c, readingDbReceived: d, readingSensorSent: e};
 	});
-var _user$project$Generated_HubAPI$decodeHubRead = A2(
+var _user$project$Generated_ReadingAPI$decodeReadingRead = A2(
 	_elm_community$json_extra$Json_Decode_Extra_ops['|:'],
 	A2(
 		_elm_community$json_extra$Json_Decode_Extra_ops['|:'],
@@ -7007,27 +7168,30 @@ var _user$project$Generated_HubAPI$decodeHubRead = A2(
 			_elm_community$json_extra$Json_Decode_Extra_ops['|:'],
 			A2(
 				_elm_community$json_extra$Json_Decode_Extra_ops['|:'],
-				_elm_lang$core$Json_Decode$succeed(_user$project$Generated_HubAPI$HubRead),
-				A2(_elm_lang$core$Json_Decode_ops[':='], 'hubId', _elm_lang$core$Json_Decode$int)),
-			A2(_elm_lang$core$Json_Decode_ops[':='], 'hubName', _elm_lang$core$Json_Decode$string)),
-		A2(_elm_lang$core$Json_Decode_ops[':='], 'hubLat', _elm_lang$core$Json_Decode$float)),
-	A2(_elm_lang$core$Json_Decode_ops[':='], 'hubLng', _elm_lang$core$Json_Decode$float));
-var _user$project$Generated_HubAPI$get = function () {
+				A2(
+					_elm_community$json_extra$Json_Decode_Extra_ops['|:'],
+					_elm_lang$core$Json_Decode$succeed(_user$project$Generated_ReadingAPI$ReadingRead),
+					A2(_elm_lang$core$Json_Decode_ops[':='], 'id', _elm_lang$core$Json_Decode$int)),
+				A2(_elm_lang$core$Json_Decode_ops[':='], 'tank', _elm_lang$core$Json_Decode$int)),
+			A2(_elm_lang$core$Json_Decode_ops[':='], 'value', _elm_lang$core$Json_Decode$int)),
+		A2(_elm_lang$core$Json_Decode_ops[':='], 'dbreceived', _elm_community$json_extra$Json_Decode_Extra$date)),
+	A2(_elm_lang$core$Json_Decode_ops[':='], 'sensorsent', _elm_community$json_extra$Json_Decode_Extra$date));
+var _user$project$Generated_ReadingAPI$get = function () {
 	var request = {
 		verb: 'GET',
 		headers: _elm_lang$core$Native_List.fromArray(
 			[
 				{ctor: '_Tuple2', _0: 'Content-Type', _1: 'application/json'}
 			]),
-		url: 'http://127.0.0.1:8080/hubs',
+		url: '/readings',
 		body: _evancz$elm_http$Http$empty
 	};
 	return A2(
 		_evancz$elm_http$Http$fromJson,
-		_elm_lang$core$Json_Decode$list(_user$project$Generated_HubAPI$decodeHubRead),
+		_elm_lang$core$Json_Decode$list(_user$project$Generated_ReadingAPI$decodeReadingRead),
 		A2(_evancz$elm_http$Http$send, _evancz$elm_http$Http$defaultSettings, request));
 }();
-var _user$project$Generated_HubAPI$getById = function (id) {
+var _user$project$Generated_ReadingAPI$getById = function (id) {
 	var request = {
 		verb: 'GET',
 		headers: _elm_lang$core$Native_List.fromArray(
@@ -7036,21 +7200,121 @@ var _user$project$Generated_HubAPI$getById = function (id) {
 			]),
 		url: A2(
 			_elm_lang$core$Basics_ops['++'],
-			'http://127.0.0.1:8080/hubs/',
+			'/readings/',
 			_evancz$elm_http$Http$uriEncode(
 				_elm_lang$core$Basics$toString(id))),
 		body: _evancz$elm_http$Http$empty
 	};
 	return A2(
 		_evancz$elm_http$Http$fromJson,
-		_elm_lang$core$Json_Decode$maybe(_user$project$Generated_HubAPI$decodeHubRead),
+		_elm_lang$core$Json_Decode$maybe(_user$project$Generated_ReadingAPI$decodeReadingRead),
 		A2(_evancz$elm_http$Http$send, _evancz$elm_http$Http$defaultSettings, request));
 };
-var _user$project$Generated_HubAPI$HubWrite = F4(
-	function (a, b, c, d) {
-		return {hubId: a, hubName: b, hubLat: c, hubLng: d};
+var _user$project$Generated_ReadingAPI$getReadingByTank = function (tank) {
+	var request = {
+		verb: 'GET',
+		headers: _elm_lang$core$Native_List.fromArray(
+			[
+				{ctor: '_Tuple2', _0: 'Content-Type', _1: 'application/json'}
+			]),
+		url: A2(
+			_elm_lang$core$Basics_ops['++'],
+			'/readings/',
+			A2(
+				_elm_lang$core$Basics_ops['++'],
+				'tank',
+				A2(
+					_elm_lang$core$Basics_ops['++'],
+					'/',
+					_evancz$elm_http$Http$uriEncode(
+						_elm_lang$core$Basics$toString(tank))))),
+		body: _evancz$elm_http$Http$empty
+	};
+	return A2(
+		_evancz$elm_http$Http$fromJson,
+		_elm_lang$core$Json_Decode$list(_user$project$Generated_ReadingAPI$decodeReadingRead),
+		A2(_evancz$elm_http$Http$send, _evancz$elm_http$Http$defaultSettings, request));
+};
+var _user$project$Generated_ReadingAPI$getReadingByHub = function (hub) {
+	var request = {
+		verb: 'GET',
+		headers: _elm_lang$core$Native_List.fromArray(
+			[
+				{ctor: '_Tuple2', _0: 'Content-Type', _1: 'application/json'}
+			]),
+		url: A2(
+			_elm_lang$core$Basics_ops['++'],
+			'/readings/',
+			A2(
+				_elm_lang$core$Basics_ops['++'],
+				'hub',
+				A2(
+					_elm_lang$core$Basics_ops['++'],
+					'/',
+					_evancz$elm_http$Http$uriEncode(
+						_elm_lang$core$Basics$toString(hub))))),
+		body: _evancz$elm_http$Http$empty
+	};
+	return A2(
+		_evancz$elm_http$Http$fromJson,
+		_elm_lang$core$Json_Decode$list(_user$project$Generated_ReadingAPI$decodeReadingRead),
+		A2(_evancz$elm_http$Http$send, _evancz$elm_http$Http$defaultSettings, request));
+};
+var _user$project$Generated_ReadingAPI$getHubYellow = function (yellow) {
+	var request = {
+		verb: 'GET',
+		headers: _elm_lang$core$Native_List.fromArray(
+			[
+				{ctor: '_Tuple2', _0: 'Content-Type', _1: 'application/json'}
+			]),
+		url: A2(
+			_elm_lang$core$Basics_ops['++'],
+			'/readings/',
+			A2(
+				_elm_lang$core$Basics_ops['++'],
+				'yellow',
+				A2(
+					_elm_lang$core$Basics_ops['++'],
+					'/',
+					_evancz$elm_http$Http$uriEncode(
+						_elm_lang$core$Basics$toString(yellow))))),
+		body: _evancz$elm_http$Http$empty
+	};
+	return A2(
+		_evancz$elm_http$Http$fromJson,
+		_elm_lang$core$Json_Decode$list(_user$project$Generated_ReadingAPI$decodeReadingRead),
+		A2(_evancz$elm_http$Http$send, _evancz$elm_http$Http$defaultSettings, request));
+};
+var _user$project$Generated_ReadingAPI$getHubRed = function (red) {
+	var request = {
+		verb: 'GET',
+		headers: _elm_lang$core$Native_List.fromArray(
+			[
+				{ctor: '_Tuple2', _0: 'Content-Type', _1: 'application/json'}
+			]),
+		url: A2(
+			_elm_lang$core$Basics_ops['++'],
+			'/readings/',
+			A2(
+				_elm_lang$core$Basics_ops['++'],
+				'red',
+				A2(
+					_elm_lang$core$Basics_ops['++'],
+					'/',
+					_evancz$elm_http$Http$uriEncode(
+						_elm_lang$core$Basics$toString(red))))),
+		body: _evancz$elm_http$Http$empty
+	};
+	return A2(
+		_evancz$elm_http$Http$fromJson,
+		_elm_lang$core$Json_Decode$list(_user$project$Generated_ReadingAPI$decodeReadingRead),
+		A2(_evancz$elm_http$Http$send, _evancz$elm_http$Http$defaultSettings, request));
+};
+var _user$project$Generated_ReadingAPI$ReadingWrite = F5(
+	function (a, b, c, d, e) {
+		return {readingId: a, readingTank: b, readingValue: c, readingDbReceived: d, readingSensorSent: e};
 	});
-var _user$project$Generated_HubAPI$decodeHubWrite = A2(
+var _user$project$Generated_ReadingAPI$decodeReadingWrite = A2(
 	_elm_community$json_extra$Json_Decode_Extra_ops['|:'],
 	A2(
 		_elm_community$json_extra$Json_Decode_Extra_ops['|:'],
@@ -7058,19 +7322,25 @@ var _user$project$Generated_HubAPI$decodeHubWrite = A2(
 			_elm_community$json_extra$Json_Decode_Extra_ops['|:'],
 			A2(
 				_elm_community$json_extra$Json_Decode_Extra_ops['|:'],
-				_elm_lang$core$Json_Decode$succeed(_user$project$Generated_HubAPI$HubWrite),
 				A2(
-					_elm_lang$core$Json_Decode_ops[':='],
-					'hubId',
-					_elm_lang$core$Json_Decode$maybe(_elm_lang$core$Json_Decode$int))),
-			A2(_elm_lang$core$Json_Decode_ops[':='], 'hubName', _elm_lang$core$Json_Decode$string)),
-		A2(_elm_lang$core$Json_Decode_ops[':='], 'hubLat', _elm_lang$core$Json_Decode$float)),
-	A2(_elm_lang$core$Json_Decode_ops[':='], 'hubLng', _elm_lang$core$Json_Decode$float));
+					_elm_community$json_extra$Json_Decode_Extra_ops['|:'],
+					_elm_lang$core$Json_Decode$succeed(_user$project$Generated_ReadingAPI$ReadingWrite),
+					A2(
+						_elm_lang$core$Json_Decode_ops[':='],
+						'id',
+						_elm_lang$core$Json_Decode$maybe(_elm_lang$core$Json_Decode$int))),
+				A2(_elm_lang$core$Json_Decode_ops[':='], 'tank', _elm_lang$core$Json_Decode$int)),
+			A2(_elm_lang$core$Json_Decode_ops[':='], 'value', _elm_lang$core$Json_Decode$int)),
+		A2(
+			_elm_lang$core$Json_Decode_ops[':='],
+			'dbreceived',
+			_elm_lang$core$Json_Decode$maybe(_elm_community$json_extra$Json_Decode_Extra$date))),
+	A2(_elm_lang$core$Json_Decode_ops[':='], 'sensorsent', _elm_community$json_extra$Json_Decode_Extra$date));
 
 var Elm = {};
 Elm['Generated'] = Elm['Generated'] || {};
-Elm['Generated']['HubAPI'] = Elm['Generated']['HubAPI'] || {};
-_elm_lang$core$Native_Platform.addPublicModule(Elm['Generated']['HubAPI'], 'Generated.HubAPI', typeof _user$project$Generated_HubAPI$main === 'undefined' ? null : _user$project$Generated_HubAPI$main);
+Elm['Generated']['ReadingAPI'] = Elm['Generated']['ReadingAPI'] || {};
+_elm_lang$core$Native_Platform.addPublicModule(Elm['Generated']['ReadingAPI'], 'Generated.ReadingAPI', typeof _user$project$Generated_ReadingAPI$main === 'undefined' ? null : _user$project$Generated_ReadingAPI$main);
 
 if (typeof define === "function" && define['amd'])
 {

@@ -17,18 +17,18 @@ type alias HubRead =
 decodeHubRead : Json.Decode.Decoder HubRead
 decodeHubRead =
   Json.Decode.succeed HubRead
-    |: ("hubId" := Json.Decode.int)
-    |: ("hubName" := Json.Decode.string)
-    |: ("hubLat" := Json.Decode.float)
-    |: ("hubLng" := Json.Decode.float)
+    |: ("id" := Json.Decode.int)
+    |: ("name" := Json.Decode.string)
+    |: ("lat" := Json.Decode.float)
+    |: ("lng" := Json.Decode.float)
 
 encodeHubRead : HubRead -> Json.Encode.Value
 encodeHubRead x =
   Json.Encode.object
-    [ ( "hubId", Json.Encode.int x.hubId )
-    , ( "hubName", Json.Encode.string x.hubName )
-    , ( "hubLat", Json.Encode.float x.hubLat )
-    , ( "hubLng", Json.Encode.float x.hubLng )
+    [ ( "id", Json.Encode.int x.hubId )
+    , ( "name", Json.Encode.string x.hubName )
+    , ( "lat", Json.Encode.float x.hubLat )
+    , ( "lng", Json.Encode.float x.hubLng )
     ]
 
 get : Task.Task Http.Error (List (HubRead))
@@ -77,18 +77,18 @@ type alias HubWrite =
 decodeHubWrite : Json.Decode.Decoder HubWrite
 decodeHubWrite =
   Json.Decode.succeed HubWrite
-    |: ("hubId" := Json.Decode.maybe Json.Decode.int)
-    |: ("hubName" := Json.Decode.string)
-    |: ("hubLat" := Json.Decode.float)
-    |: ("hubLng" := Json.Decode.float)
+    |: ("id" := Json.Decode.maybe Json.Decode.int)
+    |: ("name" := Json.Decode.string)
+    |: ("lat" := Json.Decode.float)
+    |: ("lng" := Json.Decode.float)
 
 encodeHubWrite : HubWrite -> Json.Encode.Value
 encodeHubWrite x =
   Json.Encode.object
-    [ ( "hubId", Maybe.withDefault Json.Encode.null (Maybe.map Json.Encode.int x.hubId) )
-    , ( "hubName", Json.Encode.string x.hubName )
-    , ( "hubLat", Json.Encode.float x.hubLat )
-    , ( "hubLng", Json.Encode.float x.hubLng )
+    [ ( "id", Maybe.withDefault Json.Encode.null (Maybe.map Json.Encode.int x.hubId) )
+    , ( "name", Json.Encode.string x.hubName )
+    , ( "lat", Json.Encode.float x.hubLat )
+    , ( "lng", Json.Encode.float x.hubLng )
     ]
 
 post : HubWrite -> Task.Task Http.Error (Maybe Int)

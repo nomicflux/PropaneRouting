@@ -21,21 +21,21 @@ type alias ReadingRead =
 decodeReadingRead : Json.Decode.Decoder ReadingRead
 decodeReadingRead =
   Json.Decode.succeed ReadingRead
-    |: ("readingId" := Json.Decode.int)
-    |: ("readingTank" := Json.Decode.int)
-    |: ("readingValue" := Json.Decode.int)
-    |: ("readingDbReceived" := Json.Decode.Extra.date)
-    |: ("readingSensorSent" := Json.Decode.Extra.date)
+    |: ("id" := Json.Decode.int)
+    |: ("tank" := Json.Decode.int)
+    |: ("value" := Json.Decode.int)
+    |: ("dbreceived" := Json.Decode.Extra.date)
+    |: ("sensorsent" := Json.Decode.Extra.date)
 
 
 encodeReadingRead : ReadingRead -> Json.Encode.Value
 encodeReadingRead x =
   Json.Encode.object
-    [ ( "readingId", Json.Encode.int x.readingId )
-    , ( "readingTank", Json.Encode.int x.readingTank )
-    , ( "readingValue", Json.Encode.int x.readingValue )
-    , ( "readingDbReceived", (Json.Encode.string << Exts.Date.toISOString) x.readingDbReceived )
-    , ( "readingSensorSent", (Json.Encode.string << Exts.Date.toISOString) x.readingSensorSent )
+    [ ( "id", Json.Encode.int x.readingId )
+    , ( "tank", Json.Encode.int x.readingTank )
+    , ( "value", Json.Encode.int x.readingValue )
+    , ( "dbreceived", (Json.Encode.string << Exts.Date.toISOString) x.readingDbReceived )
+    , ( "sensorsent", (Json.Encode.string << Exts.Date.toISOString) x.readingSensorSent )
     ]
 
 get : Task.Task Http.Error (List (ReadingRead))
@@ -161,20 +161,20 @@ type alias ReadingWrite =
 decodeReadingWrite : Json.Decode.Decoder ReadingWrite
 decodeReadingWrite =
   Json.Decode.succeed ReadingWrite
-    |: ("readingId" := Json.Decode.maybe Json.Decode.int)
-    |: ("readingTank" := Json.Decode.int)
-    |: ("readingValue" := Json.Decode.int)
-    |: ("readingDbReceived" := Json.Decode.maybe Json.Decode.Extra.date)
-    |: ("readingSensorSent" := Json.Decode.Extra.date)
+    |: ("id" := Json.Decode.maybe Json.Decode.int)
+    |: ("tank" := Json.Decode.int)
+    |: ("value" := Json.Decode.int)
+    |: ("dbreceived" := Json.Decode.maybe Json.Decode.Extra.date)
+    |: ("sensorsent" := Json.Decode.Extra.date)
 
 encodeReadingWrite : ReadingWrite -> Json.Encode.Value
 encodeReadingWrite x =
   Json.Encode.object
-    [ ( "readingId", Maybe.withDefault Json.Encode.null (Maybe.map Json.Encode.int x.readingId) )
-    , ( "readingTank", Json.Encode.int x.readingTank )
-    , ( "readingValue", Json.Encode.int x.readingValue )
-    , ( "readingDbReceived", Maybe.withDefault Json.Encode.null (Maybe.map (Json.Encode.string << Exts.Date.toISOString) x.readingDbReceived) )
-    , ( "readingSensorSent", (Json.Encode.string << Exts.Date.toISOString) x.readingSensorSent)
+    [ ( "id", Maybe.withDefault Json.Encode.null (Maybe.map Json.Encode.int x.readingId) )
+    , ( "tank", Json.Encode.int x.readingTank )
+    , ( "value", Json.Encode.int x.readingValue )
+    , ( "dbreceived", Maybe.withDefault Json.Encode.null (Maybe.map (Json.Encode.string << Exts.Date.toISOString) x.readingDbReceived) )
+    , ( "sensorsent", (Json.Encode.string << Exts.Date.toISOString) x.readingSensorSent)
     ]
 
 post : ReadingWrite -> Task.Task Http.Error (Maybe Int)

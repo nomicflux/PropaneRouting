@@ -15,8 +15,8 @@ import Task
 import Http
 import Debug
 import Generated.HubAPI as Hub
--- import Generated.TankAPI as Tank
--- import Generated.ReadingAPI as Reading
+import Generated.TankAPI as Tank
+import Generated.ReadingAPI as Reading
 
 type alias Chart = { id : GMPos, values : A.Array Float }
 type alias Model = { charts : List Chart, numCharts : Int, currChart : Maybe GMPos }
@@ -26,7 +26,7 @@ type Msg = AddToChart GMPos Float
          | ClearChart GMPos
          | AddChart GMPos
          | MarkerClicked GMPos
-         | AddHub (List Hub.HubRead)
+         | AddHub (List Reading.ReadingRead)
          | Failure Http.Error
 
 getLast : A.Array number -> number
@@ -199,7 +199,7 @@ subscriptions model =
 main : Program Never
 main =
     Html.App.program
-        { init = (initialModel, Task.perform Failure AddHub (Hub.get))
+        { init = (initialModel, Task.perform Failure AddHub (Reading.get))
         , view = view
         , update = update
         , subscriptions = subscriptions

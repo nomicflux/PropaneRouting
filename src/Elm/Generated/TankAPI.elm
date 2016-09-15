@@ -22,25 +22,25 @@ type alias TankRead =
 decodeTankRead : Json.Decode.Decoder TankRead
 decodeTankRead =
   Json.Decode.succeed TankRead
-    |: ("tankId" := Json.Decode.int)
-    |: ("tankHub" := Json.Decode.int)
-    |: ("tankName" := Json.Decode.string)
-    |: ("tankYellow" := Json.Decode.int)
-    |: ("tankRed" := Json.Decode.int)
-    |: ("tankLat" := Json.Decode.float)
-    |: ("tankLng" := Json.Decode.float)
+    |: ("id" := Json.Decode.int)
+    |: ("hub" := Json.Decode.int)
+    |: ("name" := Json.Decode.string)
+    |: ("yellow" := Json.Decode.int)
+    |: ("red" := Json.Decode.int)
+    |: ("lat" := Json.Decode.float)
+    |: ("lng" := Json.Decode.float)
 
 
 encodeTankRead : TankRead -> Json.Encode.Value
 encodeTankRead x =
   Json.Encode.object
-    [ ( "tankId", Json.Encode.int x.tankId )
-    , ( "tankHub", Json.Encode.int x.tankHub )
-    , ( "tankName", Json.Encode.string x.tankName )
-    , ( "tankYellow", Json.Encode.int x.tankYellow )
-    , ( "tankRed", Json.Encode.int x.tankRed )
-    , ( "tankLat", Json.Encode.float x.tankLat )
-    , ( "tankLng", Json.Encode.float x.tankLng )
+    [ ( "id", Json.Encode.int x.tankId )
+    , ( "hub", Json.Encode.int x.tankHub )
+    , ( "name", Json.Encode.string x.tankName )
+    , ( "yellow", Json.Encode.int x.tankYellow )
+    , ( "red", Json.Encode.int x.tankRed )
+    , ( "lat", Json.Encode.float x.tankLat )
+    , ( "lng", Json.Encode.float x.tankLng )
     ]
 
 get : Task.Task Http.Error (List (TankRead))
@@ -111,24 +111,24 @@ type alias TankWrite =
 decodeTankWrite : Json.Decode.Decoder TankWrite
 decodeTankWrite =
   Json.Decode.succeed TankWrite
-    |: ("tankId" := Json.Decode.maybe Json.Decode.int)
-    |: ("tankHub" := Json.Decode.int)
-    |: ("tankName" := Json.Decode.string)
-    |: ("tankYellow" := Json.Decode.maybe Json.Decode.int)
-    |: ("tankRed" := Json.Decode.maybe Json.Decode.int)
-    |: ("tankLat" := Json.Decode.float)
-    |: ("tankLng" := Json.Decode.float)
+    |: ("id" := Json.Decode.maybe Json.Decode.int)
+    |: ("hub" := Json.Decode.int)
+    |: ("name" := Json.Decode.string)
+    |: ("yellow" := Json.Decode.maybe Json.Decode.int)
+    |: ("red" := Json.Decode.maybe Json.Decode.int)
+    |: ("lat" := Json.Decode.float)
+    |: ("lng" := Json.Decode.float)
 
 encodeTankWrite : TankWrite -> Json.Encode.Value
 encodeTankWrite x =
   Json.Encode.object
-    [ ( "tankId", Maybe.withDefault Json.Encode.null (Maybe.map Json.Encode.int x.tankId) )
-    , ( "tankHub", Json.Encode.int x.tankHub )
-    , ( "tankName", Json.Encode.string x.tankName )
-    , ( "tankYellow", Maybe.withDefault Json.Encode.null (Maybe.map Json.Encode.int x.tankYellow) )
-    , ( "tankRed", Maybe.withDefault Json.Encode.null (Maybe.map Json.Encode.int x.tankRed) )
-    , ( "tankLat", Json.Encode.float x.tankLat )
-    , ( "tankLng", Json.Encode.float x.tankLng )
+    [ ( "id", Maybe.withDefault Json.Encode.null (Maybe.map Json.Encode.int x.tankId) )
+    , ( "hub", Json.Encode.int x.tankHub )
+    , ( "name", Json.Encode.string x.tankName )
+    , ( "yellow", Maybe.withDefault Json.Encode.null (Maybe.map Json.Encode.int x.tankYellow) )
+    , ( "red", Maybe.withDefault Json.Encode.null (Maybe.map Json.Encode.int x.tankRed) )
+    , ( "lat", Json.Encode.float x.tankLat )
+    , ( "lng", Json.Encode.float x.tankLng )
     ]
 
 post : TankWrite -> Task.Task Http.Error (Maybe Int)
