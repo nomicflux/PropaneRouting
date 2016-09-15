@@ -89,7 +89,7 @@ maxY : Float
 maxY = 4096
 
 maxX : Float
-maxX = 512
+maxX = 1024
 
 xoffset : Float
 xoffset = 15
