@@ -70,14 +70,37 @@ update msg model =
             ( model, Cmd.batch (List.map (\t -> addTank (t.tankId, {lat=t.tankLat, lng=t.tankLng}, t.tankYellow, t.tankRed)) tanks))
         AddReadings idx readings ->
             let newCharts = List.map (addReadings idx readings) model.charts
-            in ({ model | charts = newCharts}, Cmd.none )
+            in ({ model | charts = newCharts}, Cmd.batch
+                    (List.map (setColor << chartToLevel) newCharts) )
         Failure err ->
             let _ = Debug.log (toString err) err
             in ( model, Cmd.none )
         Tick newTime ->
             let readings = Debug.log "Readings"
+            in ( model, Cmd.batch (List.map (\c -> Reading.getByTank c.id
+                                            |> Task.perform Failure (AddReadings c.id))
+                                       model.charts))
 
-            in ( model, Cmd.batch (List.map (\c -> Reading.getByTank c.id |> Task.perform Failure (AddReadings c.id)) model.charts))
+empty : Float
+empty = 1.0
+
+takeAvg : Int
+takeAvg = 5
+
+mySlice : A.Array ty -> Int -> Int -> List ty
+mySlice arr start end = List.filterMap (\x -> A.get x arr) [start..end]
+
+chartToLevel : Chart -> (ChartID, Level)
+chartToLevel chart =
+    let size = A.length chart.values
+        back = Basics.max 0.0 (size - takeAvg - 1 |> toFloat)
+        latestFive = mySlice chart.values (round back) (size - 1)
+        avgVal = (List.foldr (\pt acc -> pt.y + acc) 0 latestFive) / (toFloat size - back)
+        lvl = if avgVal <= empty then "empty"
+              else if avgVal <= chart.red then "red"
+                  else if avgVal <= chart.yellow then "yellow"
+                      else "green"
+    in (chart.id, lvl)
 
 svgWidth : Float
 svgWidth = 600
@@ -153,13 +176,13 @@ renderVals chart =
         ypts = A.map calcY yvals
         xpts = A.map calcX xvals
         -- xpts = A.initialize numVals (toFloat >> (*) xstep >> (+) xoffset)
-        ymarginals = A.map (\y -> Svg.line [ S.x1 "0", S.x2 "5", S.strokeWidth "1"
-                                           , S.y1 (toString y), S.y2 (toString y)
-                                           ] []) ypts
-        xmarginals = A.map (\x -> Svg.line [ S.x1 (toString x), S.x2 (toString x)
-                                           , S.strokeWidth "1"
-                                           , S.y1 (toString svgHeight), S.y2 (toString (svgHeight - 5))
-                                           ] []) xpts
+        ymarginals = List.map (\y -> Svg.line [ S.x1 "0", S.x2 "5", S.strokeWidth "1"
+                                              , S.y1 (toString y), S.y2 (toString y)
+                                              ] []) (A.toList ypts)
+        xmarginals = List.map (\x -> Svg.line [ S.x1 (toString x), S.x2 (toString x)
+                                              , S.strokeWidth "1"
+                                              , S.y1 (toString svgHeight), S.y2 (toString (svgHeight - 5))
+                                              ] []) (A.toList xpts)
         pts = List.map (\ (x,y) -> Svg.circle [ S.cx (toString x)
                                            , S.cy (toString y)
                                            , S.r "3"
@@ -178,7 +201,7 @@ renderVals chart =
                              )
                              ([], (ax, ay))
                              (arrzip xpts ypts))
-        marginals = A.toList (A.append ymarginals xmarginals)
+        marginals = ymarginals ++ xmarginals
         allTogether = marginals ++ pts ++ lines
     in
         Svg.svg [ S.height (toString svgHeight)

@@ -62,7 +62,7 @@ function initMap() {
 
     var resolution = 1000;
     app.ports.addTank.subscribe(function(posyr) {
-        console.log(posyr);
+        // console.log(posyr);
         var id = posyr[0];
         var pos = posyr[1];
         var yellow = posyr[2];
@@ -75,6 +75,15 @@ function initMap() {
         // setInterval(sendDataCallback(app, id, redoDirections), resolution);
         markers[id] = marker;
         app.ports.addMarker.send(posyr);
+    });
+
+    app.ports.setColor.subscribe(function(val) {
+        var chart = val[0];
+        var color = val[1];
+        if(color == "empty") {
+            color = "pink";
+        }
+        markers[chart].set("icon","Google Maps Markers/"+color+"_MarkerT.png");
     });
 
     // app.ports.sendChartVal.subscribe(function(vals) {
