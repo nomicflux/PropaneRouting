@@ -77,9 +77,12 @@ update msg model =
             in ( model, Cmd.none )
         Tick newTime ->
             let readings = Debug.log "Readings"
-            in ( model, Cmd.batch (List.map (\c -> Reading.getByTank c.id
+            in ( model, Cmd.batch (List.map (\c -> Reading.getByTankLimit c.id baseTime
                                             |> Task.perform Failure (AddReadings c.id))
                                        model.charts))
+
+baseTime : Int
+baseTime = 60 * 60 * 48
 
 empty : Float
 empty = 1.0

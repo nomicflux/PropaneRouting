@@ -93,6 +93,27 @@ getByTank tank =
       (Json.Decode.list decodeReadingRead)
       (Http.send Http.defaultSettings request)
 
+getByTankLimit : Int -> Int -> Task.Task Http.Error (List (ReadingRead))
+getByTankLimit tank seconds =
+  let
+    request =
+      { verb =
+          "GET"
+      , headers =
+          [("Content-Type", "application/json")]
+      , url =
+          "/readings/" ++ "tank"
+          ++ "/" ++ (tank |> toString |> Http.uriEncode)
+          ++ "/" ++ (seconds |> toString |> Http.uriEncode)
+      , body =
+          Http.empty
+      }
+  in
+    Http.fromJson
+      (Json.Decode.list decodeReadingRead)
+      (Http.send Http.defaultSettings request)
+
+
 getByHub : Int -> Task.Task Http.Error (List (ReadingRead))
 getByHub hub =
   let

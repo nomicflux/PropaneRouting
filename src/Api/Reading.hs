@@ -8,18 +8,21 @@ import Servant
 import qualified Opaleye as O
 import Control.Monad.IO.Class (liftIO)
 import Data.Maybe (listToMaybe)
+import qualified Data.DateTime as DT
 
 import App
 import Models.Reading
 import Queries.Reading
 
-type ReadingAPI = Get '[JSON] [ReadingRead]
-              :<|> Capture "id" ReadingID :> Get '[JSON] (Maybe ReadingRead)
-              :<|> "tank" :> Capture "tank" TankID :> Get '[JSON] [ReadingRead]
-              :<|> "hub" :> Capture "hub" HubID :> Get '[JSON] [ReadingRead]
-              :<|> "yellow" :> Capture "yellow" HubID :> Get '[JSON] [ReadingRead]
-              :<|> "red" :> Capture "red" HubID :> Get '[JSON] [ReadingRead]
-              :<|> ReqBody '[JSON] ReadingWrite :> Post '[JSON] (Maybe ReadingID)
+type ReadingAPI =
+  Get '[JSON] [ReadingRead]
+  :<|> Capture "id" ReadingID :> Get '[JSON] (Maybe ReadingRead)
+  :<|> "tank" :> Capture "tank" TankID :> Get '[JSON] [ReadingRead]
+  :<|> "tank" :> Capture "tank" TankID :> Capture "seconds" Integer :> Get '[JSON] [ReadingRead]
+  :<|> "hub" :> Capture "hub" HubID :> Get '[JSON] [ReadingRead]
+  :<|> "yellow" :> Capture "yellow" HubID :> Get '[JSON] [ReadingRead]
+  :<|> "red" :> Capture "red" HubID :> Get '[JSON] [ReadingRead]
+  :<|> ReqBody '[JSON] ReadingWrite :> Post '[JSON] (Maybe ReadingID)
 
 readingAPI :: Proxy ReadingAPI
 readingAPI = Proxy
@@ -28,6 +31,7 @@ readingServer :: ServerT ReadingAPI AppM
 readingServer = getReadings
             :<|> getReadingById
             :<|> getReadingsByTank
+            :<|> getReadingsByTankLimit
             :<|> getReadingsByHub
             :<|> getYellowReadingsByHub
             :<|> getRedReadingsByHub
@@ -47,6 +51,13 @@ getReadingsByTank :: TankID -> AppM [ReadingRead]
 getReadingsByTank tankID = do
   con <- getConn
   liftIO $ O.runQuery con (O.orderBy (O.asc readingSensorSent) $ readingsByTankQuery tankID)
+
+getReadingsByTankLimit :: TankID -> Integer -> AppM [ReadingRead]
+getReadingsByTankLimit tankID seconds = do
+  con <- getConn
+  now <- liftIO DT.getCurrentTime
+  liftIO $ O.runQuery con (O.orderBy (O.asc readingSensorSent) $
+                            readingsByTankLimitQuery tankID $ DT.addSeconds (-1*seconds) now)
 
 getReadingsByHub :: HubID -> AppM [ReadingRead]
 getReadingsByHub hubID = do
