@@ -3,8 +3,8 @@ module Propane exposing (..)
 import Html.App
 import Html exposing (..)
 import Html.Attributes exposing (..)
-import Html.Events exposing (onClick)
--- import String
+import Html.Events exposing (onClick, onInput)
+import String
 -- import Result exposing (Result)
 import Svg
 import Svg.Attributes as S
@@ -20,7 +20,7 @@ import TankAPI as Tank
 import ReadingAPI as Reading
 
 type alias Chart = { id : ChartID, pos : GMPos, values : A.Array ChartPt, yellow : Float, red : Float }
-type alias Model = { charts : List Chart, numCharts : Int, currChart : Maybe ChartID }
+type alias Model = { charts : List Chart, numCharts : Int, currChart : Maybe ChartID, timeScale : Int }
 
 type Msg = ClearChart ChartID
          | AddChart (ChartID, GMPos, Float, Float)
@@ -29,13 +29,14 @@ type Msg = ClearChart ChartID
          | AddTanks (List Tank.TankRead)
          | AddReadings ChartID (List Reading.ReadingRead)
          | Failure Http.Error
+         | ChangeScale String
          | Tick Time
 
 getLast : A.Array number -> number
 getLast arr = Maybe.withDefault 0 (A.get (A.length arr - 1) arr)
 
 initialModel : Model
-initialModel = { charts = [ ], numCharts = 0, currChart = Nothing }
+initialModel = { charts = [ ], numCharts = 0, currChart = Nothing, timeScale = 24 }
 
 addReadings : ChartID -> List Reading.ReadingRead -> Chart -> Chart
 addReadings id vals chart =
@@ -75,14 +76,15 @@ update msg model =
         Failure err ->
             let _ = Debug.log (toString err) err
             in ( model, Cmd.none )
+        ChangeScale shours ->
+            case String.toInt shours of
+                Err _ -> ( model, Cmd.none )
+                Ok hours -> ( { model | timeScale = hours }, Cmd.none )
         Tick newTime ->
             let readings = Debug.log "Readings"
-            in ( model, Cmd.batch (List.map (\c -> Reading.getByTankLimit c.id baseTime
+            in ( model, Cmd.batch (List.map (\c -> Reading.getByTankLimit c.id (60 * 60 * model.timeScale)
                                             |> Task.perform Failure (AddReadings c.id))
                                        model.charts))
-
-baseTime : Int
-baseTime = 60 * 60 * 48
 
 empty : Float
 empty = 1.0
@@ -232,7 +234,8 @@ getCurrentCharts model =
 view : Model -> Html Msg
 view model = div
              [ id "viewing-area" ]
-             [ div [ class "charts" ] (List.map viewChart (getCurrentCharts model))
+             [ div [ class "charts" ] (List.map viewChart (getCurrentCharts model)) ,
+                   div [] [ input [ type' "number", placeholder "12", onInput ChangeScale ] []]
              ]
 
 subscriptions : Model -> Sub Msg
