@@ -245,8 +245,16 @@ renderVals chart =
                              ([], (ax, ay))
                              (zip xpts ypts))
         getDate = Maybe.map showDate >> Maybe.withDefault "" >> text
-        leftX = Svg.text' [ S.x "0", S.y "20", S.textAnchor "start" ] [ getDate chart.earliestDate ]
-        rightX = Svg.text' [ S.x (toString maxX), S.y "20", S.textAnchor "end"] [ getDate chart.latestDate ]
+        leftX = Svg.text' [ S.x "0"
+                          , S.y "20"
+                          , S.textAnchor "start"
+                          ]
+                [ getDate chart.earliestDate ]
+        rightX = Svg.text' [ S.x (toString maxX)
+                           , S.y "20"
+                           , S.textAnchor "end"
+                           ]
+                 [ getDate chart.latestDate ]
         marginals = ymarginals ++ xmarginals
         allTogether = leftX :: rightX :: (marginals ++ lines ++ pts)
     in
