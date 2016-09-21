@@ -14,8 +14,7 @@ import Task
 import Http
 import Debug
 import Time exposing (Time, second)
-import Exts.Date exposing(toISOString)
-import Date exposing (Date)
+import Date exposing (Date, year, month, day, hour, minute)
 import HubAPI as Hub
 import TankAPI as Tank
 import ReadingAPI as Reading
@@ -245,15 +244,24 @@ renderVals chart =
                              )
                              ([], (ax, ay))
                              (zip xpts ypts))
-        getDate = Maybe.map toISOString >> Maybe.withDefault "" >> text >> Debug.log "date"
-        leftX = Svg.text' [ S.x "0", S.y "20"] [ getDate chart.earliestDate ]
-        rightX = Svg.text' [ S.x (toString (maxX - 100)), S.y "20"] [ getDate chart.latestDate ]
+        getDate = Maybe.map showDate >> Maybe.withDefault "" >> text >> Debug.log "date"
+        leftX = Svg.text' [ S.x "0", S.y "20", S.textAnchor "start" ] [ getDate chart.earliestDate ]
+        rightX = Svg.text' [ S.x (toString maxX), S.y "20", S.textAnchor "end"] [ getDate chart.latestDate ]
         marginals = ymarginals ++ xmarginals
-        allTogether = leftX :: rightX :: marginals ++ lines ++ pts
+        allTogether = leftX :: rightX :: (marginals ++ lines ++ pts)
     in
         Svg.svg [ S.height (toString svgHeight)
                 , S.width (toString svgWidth) ]
             (leftBar :: bottomBar :: allTogether)
+
+showDate : Date -> String
+showDate date =
+    let hr = hour date
+        mn = minute date
+        yr = year date
+        mt = month date
+        dy = day date
+    in toString yr ++ "-" ++ toString mt ++ "-" ++ toString dy ++ " " ++ toString hr ++ ":" ++ toString mn
 
 chartLocation : Chart -> String
 chartLocation chart = toString chart.id
