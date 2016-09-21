@@ -72,7 +72,8 @@ function initMap() {
             position:pos,
             map: gmap
         });
-        marker.addListener('click', markerCallback(app, id, manualClick));
+        marker.addListener('click', markerCallback(app, id));
+        marker.addListener('dblclick', markerDblCallback(app, id, manualClick));
         // setInterval(sendDataCallback(app, id, redoDirections), resolution);
         markers[id] = marker;
         app.ports.addMarker.send(posyr);
@@ -152,16 +153,22 @@ function directionCallback(display) {
     };
 }
 
-function markerCallback(app, id, manualClick) {
+function markerCallback(app, id) {
+    return function() {
+        app.ports.markerClicked.send(id);
+    };
+}
+
+function markerDblCallback(app, id, manualClick) {
     return function() {
         if(manualClick.hasOwnProperty(id)) {
             delete manualClick[id];
         } else {
             manualClick[id] = true;
         }
-        app.ports.markerClicked.send(id);
     };
 }
+
 
 function sendDataCallback(app, id, displaycb) {
     return function() {
