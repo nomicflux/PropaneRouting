@@ -2,6 +2,7 @@ function initMap() {
     var currentWaypoints = {};
     var pastWaypoints = {};
     var markers = {};
+    var manualClick = {};
 
     var app = Elm.Propane.embed(document.getElementById("elm-area"));
 
@@ -71,7 +72,7 @@ function initMap() {
             position:pos,
             map: gmap
         });
-        marker.addListener('click', markerCallback(app, id));
+        marker.addListener('click', markerCallback(app, id, manualClick));
         // setInterval(sendDataCallback(app, id, redoDirections), resolution);
         markers[id] = marker;
         app.ports.addMarker.send(posyr);
@@ -85,7 +86,38 @@ function initMap() {
         } else if(color == "noreadings") {
             color = "blue";
         }
-        markers[chart].set("icon","Google Maps Markers/"+color+"_MarkerT.png");
+        var letter = "T";
+        if(manualClick.hasOwnProperty(chart)) {
+            letter = "M";
+        }
+        markers[chart].set("icon","Google Maps Markers/"+color+"_Marker"+letter+".png");
+    });
+
+    app.ports.sendRedRoutes.subscribe(function(val) {
+        currentWaypoints = {};
+        for(var k in manualClick) {
+            currentWaypoints[k] = {'location': markers[k].position, stopover: true};
+        }
+        console.log(currentWaypoints);
+        for(var r in val) {
+            var red = val[r];
+            var marker = markers[red];
+            currentWaypoints[red] = {'location': marker.position, stopover: true};
+        };
+        redoDirections();
+    });
+
+    app.ports.sendYellowRoutes.subscribe(function(val) {
+        currentWaypoints = {};
+        for(var k in manualClick) {
+            currentWaypoints[k] = {'location': markers[k].position, stopover: true};
+        }
+        for(var y in val) {
+            var yellow = val[y];
+            var marker = markers[yellow];
+            currentWaypoints[yellow] = {'location': marker.position, stopover: true};
+        };
+        redoDirections();
     });
 
     // app.ports.sendChartVal.subscribe(function(vals) {
@@ -106,7 +138,7 @@ function initMap() {
     //     }
     // });
 
-    setTimeout(function() { setInterval(redoDirections, resolution); }, 400);
+    // setTimeout(function() { setInterval(redoDirections, resolution); }, 400);
 }
 
 
@@ -120,8 +152,13 @@ function directionCallback(display) {
     };
 }
 
-function markerCallback(app, id) {
+function markerCallback(app, id, manualClick) {
     return function() {
+        if(manualClick.hasOwnProperty(id)) {
+            delete manualClick[id];
+        } else {
+            manualClick[id] = true;
+        }
         app.ports.markerClicked.send(id);
     };
 }

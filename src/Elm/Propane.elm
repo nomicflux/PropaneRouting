@@ -33,6 +33,7 @@ type alias Model = { charts : List Chart
                    , numCharts : Int
                    , currChart : Maybe ChartID
                    , timeScale : Int
+                   , includeNoReadings : Bool
                    }
 
 type Msg = ClearChart ChartID
@@ -43,10 +44,18 @@ type Msg = ClearChart ChartID
          | AddReadings ChartID (List Reading.ReadingRead)
          | Failure Http.Error
          | ChangeScale String
+         | ToggleNoReadings
+         | RouteRed
+         | RouteYellow
          | Tick Time
 
 initialModel : Model
-initialModel = { charts = [ ], numCharts = 0, currChart = Nothing, timeScale = 24 }
+initialModel = { charts = [ ]
+               , numCharts = 0
+               , currChart = Nothing
+               , timeScale = 12
+               , includeNoReadings = False
+               }
 
 addReadings : ChartID -> List Reading.ReadingRead -> Chart -> Chart
 addReadings id vals chart =
@@ -118,6 +127,18 @@ update msg model =
             case String.toInt shours of
                 Err _ -> ( model, Cmd.none )
                 Ok hours -> ( { model | timeScale = hours, charts = List.map clearChart model.charts }, Cmd.none )
+        ToggleNoReadings ->
+            ( { model | includeNoReadings = not model.includeNoReadings }, Cmd.none)
+        RouteRed ->
+            let charts = List.map chartToLevel model.charts
+                       |> List.filter (\ (i, l) -> l == "red" || l == "empty" || (l == "noreadings" && model.includeNoReadings))
+                       |> List.map (\ (i, _) -> i)
+            in ( model, sendRedRoutes charts)
+        RouteYellow ->
+            let charts = List.map chartToLevel model.charts
+                       |> List.filter (\ (i, l) -> l == "yellow" || l == "red" || l == "empty" || (l == "noreadings" && model.includeNoReadings))
+                       |> List.map (\ (i, _) -> i)
+            in ( model, sendYellowRoutes charts)
         Tick newTime ->
             let getReadings = List.map (\c -> Reading.getByTank
                                             c.id
@@ -155,17 +176,11 @@ svgHeight = 400
 maxY : Float
 maxY = 4096
 
--- maxX : Float
--- maxX = 1024
-
 xoffset : Float
 xoffset = 15
 
 yoffset : Float
 yoffset = 0
-
--- xstep : Float
--- xstep = (svgWidth - xoffset) / maxX
 
 ystep : Float
 ystep = (svgHeight - yoffset) / maxY
@@ -250,7 +265,7 @@ renderVals chart =
                           , S.textAnchor "start"
                           ]
                 [ getDate chart.earliestDate ]
-        rightX = Svg.text' [ S.x (toString maxX)
+        rightX = Svg.text' [ S.x (toString xSize)
                            , S.y "20"
                            , S.textAnchor "end"
                            ]
@@ -262,14 +277,17 @@ renderVals chart =
                 , S.width (toString svgWidth) ]
             (leftBar :: bottomBar :: allTogether)
 
+minLen : Int -> String
+minLen x = if x < 10 then "0" ++ toString x else toString x
+
 showDate : Date -> String
 showDate date =
-    let hr = hour date
-        mn = minute date
-        yr = year date
-        mt = month date
-        dy = day date
-    in toString yr ++ "-" ++ toString mt ++ "-" ++ toString dy ++ " " ++ toString hr ++ ":" ++ toString mn
+    let hr = hour date |> minLen
+        mn = minute date |> minLen
+        yr = year date |> toString
+        mt = month date |> toString
+        dy = day date |> toString
+    in yr ++ "-" ++ mt ++ "-" ++ dy ++ " " ++ hr ++ ":" ++ mn
 
 chartLocation : Chart -> String
 chartLocation chart = toString chart.id
@@ -290,7 +308,14 @@ getCurrentCharts model =
 view : Model -> Html Msg
 view model = div
              [ id "viewing-area" ]
-             [ div [ class "charts" ] (List.map viewChart (getCurrentCharts model)) ,
+             [ div [ class "buttons" ]
+                   [ div [ ] [ text "Include No Readings: "
+                             , input [ type' "checkbox", onClick ToggleNoReadings ] [ ]
+                             ]
+                   , button [ onClick RouteRed ] [ text "Route to Red" ]
+                   , button [ onClick RouteYellow ] [ text "Route to Yellow"]
+                   ]
+             , div [ class "charts" ] (List.map viewChart (getCurrentCharts model)) ,
                    div [] [ text "Hours to View: "
                           , input [ type' "number", placeholder "12", onInput ChangeScale ] []]
              ]

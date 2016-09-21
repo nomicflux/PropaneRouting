@@ -20,4 +20,8 @@ port addTank : (ChartID, GMPos, Float, Float) -> Cmd msg
 
 port setColor : (ChartID, Level) -> Cmd msg
 
+port sendRedRoutes : List ChartID -> Cmd msg
+
+port sendYellowRoutes : List ChartID -> Cmd msg
+
 -- port sendChartVal : List ChartVal -> Cmd msg
