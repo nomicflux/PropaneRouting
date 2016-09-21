@@ -14,6 +14,8 @@ import Task
 import Http
 import Debug
 import Time exposing (Time, second)
+import Exts.Date exposing(toISOString)
+import Date exposing (Date)
 import HubAPI as Hub
 import TankAPI as Tank
 import ReadingAPI as Reading
@@ -25,6 +27,8 @@ type alias Chart = { id : ChartID
                    , yellow : Float
                    , red : Float
                    , lastPulled : Maybe Int
+                   , earliestDate : Maybe Date
+                   , latestDate : Maybe Date
                    }
 type alias Model = { charts : List Chart
                    , numCharts : Int
@@ -50,19 +54,30 @@ addReadings id vals chart =
     if chart.id /= id
         then chart
         else
-            let reversed = List.reverse vals
+            let earliestReading = List.head vals
+                reversed = List.reverse vals
+                latestReading = List.head reversed
                 newVals = List.map (\v -> { x = v.readingSensorSent
                                           , y = v.readingValue})
                           reversed
-                latestReading = Maybe.map (\r -> r.readingId) (List.head reversed)
+                lastPulled = Maybe.map (\r -> r.readingId) latestReading
+                earliestDate = Maybe.map (\r -> r.readingDbReceived) earliestReading
+                latestDate = Maybe.map (\r -> r.readingDbReceived) latestReading
             in { chart | values =  newVals ++ chart.values
                , numValues = chart.numValues + List.length vals
-               , lastPulled = Maybe.oneOf [latestReading, chart.lastPulled]
+               , lastPulled = Maybe.oneOf [lastPulled, chart.lastPulled]
+               , latestDate = Maybe.oneOf [latestDate, chart.latestDate]
+               , earliestDate = Maybe.oneOf [chart.earliestDate, earliestDate]
                }
 
 clearChart : Chart -> Chart
 clearChart chart =
-    { chart | values = [], numValues = 0, lastPulled = Nothing }
+    { chart | values = []
+    , numValues = 0
+    , lastPulled = Nothing
+    , earliestDate = Nothing
+    , latestDate = Nothing
+    }
 
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
@@ -78,6 +93,8 @@ update msg model =
                            , yellow = yellow
                            , red = red
                            , lastPulled = Nothing
+                           , earliestDate = Nothing
+                           , latestDate = Nothing
                            }
                 newCt = model.numCharts + 1
             in ( { model | charts = newChart :: model.charts, numCharts = newCt }, Cmd.none)
@@ -121,7 +138,7 @@ chartToLevel chart =
     let size = chart.numValues
         back = Basics.max 0.0 (size - takeAvg - 1 |> toFloat)
         numTaken = (toFloat size - back)
-        latestFive = List.take (round back) chart.values
+        latestFive = List.take (round numTaken) chart.values
         avgVal = (List.foldr (\pt acc -> pt.y + acc) 0 latestFive) / numTaken
         lvl = if round numTaken == 0 then "noreadings"
               else if avgVal <= empty then "empty"
@@ -228,8 +245,11 @@ renderVals chart =
                              )
                              ([], (ax, ay))
                              (zip xpts ypts))
+        getDate = Maybe.map toISOString >> Maybe.withDefault "" >> text >> Debug.log "date"
+        leftX = Svg.text' [ S.x "0", S.y "20"] [ getDate chart.earliestDate ]
+        rightX = Svg.text' [ S.x (toString (maxX - 100)), S.y "20"] [ getDate chart.latestDate ]
         marginals = ymarginals ++ xmarginals
-        allTogether = marginals ++ pts ++ lines
+        allTogether = leftX :: rightX :: marginals ++ lines ++ pts
     in
         Svg.svg [ S.height (toString svgHeight)
                 , S.width (toString svgWidth) ]
@@ -255,7 +275,7 @@ view : Model -> Html Msg
 view model = div
              [ id "viewing-area" ]
              [ div [ class "charts" ] (List.map viewChart (getCurrentCharts model)) ,
-                   div [] [ text "Hours to View"
+                   div [] [ text "Hours to View: "
                           , input [ type' "number", placeholder "12", onInput ChangeScale ] []]
              ]
 
