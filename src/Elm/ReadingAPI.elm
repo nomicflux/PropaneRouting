@@ -74,9 +74,15 @@ getById id =
       (Json.Decode.maybe decodeReadingRead)
       (Http.send Http.defaultSettings request)
 
-getByTank : Int -> Task.Task Http.Error (List (ReadingRead))
-getByTank tank =
+getByTank : Int -> Maybe Int -> Maybe Int -> Task.Task Http.Error (List (ReadingRead))
+getByTank tank mseconds mreading =
   let
+    queries = case (mseconds, mreading) of
+                  (Nothing, Nothing) -> ""
+                  (Nothing, Just rid) -> "?lastreading=" ++ toString rid
+                  (Just sec, Nothing) -> "?seconds=" ++ toString sec
+                  (Just sec, Just rid) -> "?seconds=" ++ toString sec ++ "&lastreading=" ++ toString rid
+
     request =
       { verb =
           "GET"
@@ -84,7 +90,7 @@ getByTank tank =
           [("Content-Type", "application/json")]
       , url =
           "/readings/" ++ "tank"
-          ++ "/" ++ (tank |> toString |> Http.uriEncode)
+          ++ "/" ++ (tank |> toString |> Http.uriEncode) ++ (queries)
       , body =
           Http.empty
       }
@@ -92,27 +98,6 @@ getByTank tank =
     Http.fromJson
       (Json.Decode.list decodeReadingRead)
       (Http.send Http.defaultSettings request)
-
-getByTankLimit : Int -> Int -> Task.Task Http.Error (List (ReadingRead))
-getByTankLimit tank seconds =
-  let
-    request =
-      { verb =
-          "GET"
-      , headers =
-          [("Content-Type", "application/json")]
-      , url =
-          "/readings/" ++ "tank"
-          ++ "/" ++ (tank |> toString |> Http.uriEncode)
-          ++ "/" ++ (seconds |> toString |> Http.uriEncode)
-      , body =
-          Http.empty
-      }
-  in
-    Http.fromJson
-      (Json.Decode.list decodeReadingRead)
-      (Http.send Http.defaultSettings request)
-
 
 getByHub : Int -> Task.Task Http.Error (List (ReadingRead))
 getByHub hub =

@@ -8,11 +8,12 @@ import Servant (ServantErr)
 import Database.PostgreSQL.Simple (Connection)
 import Data.Pool (Pool, withResource)
 import System.Environment (lookupEnv)
-import System.Log.FastLogger (LoggerSet, LogStr, pushLogStrLn)
+import System.Log.FastLogger (LoggerSet, LogStr, pushLogStrLn, toLogStr)
 import Data.Maybe (fromMaybe)
 import Text.Read (readMaybe)
 
 type HubID = Int64
+
 type TankID = Int64
 type ReadingID = Int64
 type Reading = Int
@@ -45,8 +46,8 @@ getConnFromPool pool = withResource pool return
 getConn :: AppM Connection
 getConn = ask >>= getConnFromPool . getPool
 
-addToLogger :: LogStr -> AppM ()
-addToLogger msg = ask >>= \cfg -> liftIO $ pushLogStrLn (getLogger cfg) msg
+addToLogger :: String -> AppM ()
+addToLogger msg = ask >>= \cfg -> liftIO $ pushLogStrLn (getLogger cfg) $ toLogStr msg
 
 lookupEnvDefault :: Read a => String -> a -> IO a
 lookupEnvDefault var def = do

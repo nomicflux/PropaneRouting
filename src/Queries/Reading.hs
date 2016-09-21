@@ -3,7 +3,7 @@
 module Queries.Reading where
 
 import qualified Opaleye as O
-import Opaleye ((.==), (.<=), (.>=))
+import Opaleye ((.==), (.<=), (.>=), (.>))
 import Control.Arrow (returnA)
 import Data.DateTime (DateTime)
 
@@ -32,6 +32,21 @@ readingsByTankLimitQuery tank since = proc () -> do
   reading <- readingsQuery -< ()
   O.restrict -< readingTank reading .== O.pgInt8 tank
   O.restrict -< readingSensorSent reading .>= O.pgUTCTime since
+  returnA -< reading
+
+readingsByTankIdQuery :: TankID -> ReadingID -> O.Query ReadingColRead
+readingsByTankIdQuery tank lastReading = proc () -> do
+  reading <- readingsQuery -< ()
+  O.restrict -< readingTank reading .== O.pgInt8 tank
+  O.restrict -< readingId reading .> O.pgInt8 lastReading
+  returnA -< reading
+
+readingsByTankLimitIdQuery :: TankID -> DateTime -> ReadingID -> O.Query ReadingColRead
+readingsByTankLimitIdQuery tank since lastReading = proc () -> do
+  reading <- readingsQuery -< ()
+  O.restrict -< readingTank reading .== O.pgInt8 tank
+  O.restrict -< readingSensorSent reading .>= O.pgUTCTime since
+  O.restrict -< readingId reading .> O.pgInt8 lastReading
   returnA -< reading
 
 readingsByHubQuery :: HubID -> O.Query ReadingColRead

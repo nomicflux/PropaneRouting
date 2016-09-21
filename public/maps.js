@@ -82,6 +82,8 @@ function initMap() {
         var color = val[1];
         if(color == "empty") {
             color = "pink";
+        } else if(color == "noreadings") {
+            color = "blue";
         }
         markers[chart].set("icon","Google Maps Markers/"+color+"_MarkerT.png");
     });

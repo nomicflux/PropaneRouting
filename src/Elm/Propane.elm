@@ -10,7 +10,6 @@ import Svg
 import Svg.Attributes as S
 import SharedModels exposing (..)
 import GMPorts exposing (..)
-import Array as A
 import Task
 import Http
 import Debug
@@ -19,8 +18,19 @@ import HubAPI as Hub
 import TankAPI as Tank
 import ReadingAPI as Reading
 
-type alias Chart = { id : ChartID, pos : GMPos, values : A.Array ChartPt, yellow : Float, red : Float }
-type alias Model = { charts : List Chart, numCharts : Int, currChart : Maybe ChartID, timeScale : Int }
+type alias Chart = { id : ChartID
+                   , pos : GMPos
+                   , values : List ChartPt
+                   , numValues : Int
+                   , yellow : Float
+                   , red : Float
+                   , lastPulled : Maybe Int
+                   }
+type alias Model = { charts : List Chart
+                   , numCharts : Int
+                   , currChart : Maybe ChartID
+                   , timeScale : Int
+                   }
 
 type Msg = ClearChart ChartID
          | AddChart (ChartID, GMPos, Float, Float)
@@ -32,9 +42,6 @@ type Msg = ClearChart ChartID
          | ChangeScale String
          | Tick Time
 
-getLast : A.Array number -> number
-getLast arr = Maybe.withDefault 0 (A.get (A.length arr - 1) arr)
-
 initialModel : Model
 initialModel = { charts = [ ], numCharts = 0, currChart = Nothing, timeScale = 24 }
 
@@ -42,12 +49,20 @@ addReadings : ChartID -> List Reading.ReadingRead -> Chart -> Chart
 addReadings id vals chart =
     if chart.id /= id
         then chart
-        else { chart | values = A.fromList (List.map (\v -> {x = v.readingSensorSent, y = v.readingValue}) vals) }
+        else
+            let reversed = List.reverse vals
+                newVals = List.map (\v -> { x = v.readingSensorSent
+                                          , y = v.readingValue})
+                          reversed
+                latestReading = Maybe.map (\r -> r.readingId) (List.head reversed)
+            in { chart | values =  newVals ++ chart.values
+               , numValues = chart.numValues + List.length vals
+               , lastPulled = Maybe.oneOf [latestReading, chart.lastPulled]
+               }
 
 clearChart : Chart -> Chart
 clearChart chart =
-    let lastVal = A.get (A.length chart.values - 1) chart.values
-    in { chart | values = A.fromList [] }
+    { chart | values = [], numValues = 0, lastPulled = Nothing }
 
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
@@ -56,7 +71,14 @@ update msg model =
             let newCharts = List.map (\c -> if c.id == idx then clearChart c else c) model.charts
             in ({ model | charts = newCharts}, Cmd.none )
         AddChart (id, pos, yellow, red) ->
-            let newChart = { id = id, pos = pos, values = A.fromList [], yellow = yellow, red = red }
+            let newChart = { id = id
+                           , pos = pos
+                           , values = []
+                           , numValues = 0
+                           , yellow = yellow
+                           , red = red
+                           , lastPulled = Nothing
+                           }
                 newCt = model.numCharts + 1
             in ( { model | charts = newChart :: model.charts, numCharts = newCt }, Cmd.none)
         MarkerClicked pos ->
@@ -79,12 +101,14 @@ update msg model =
         ChangeScale shours ->
             case String.toInt shours of
                 Err _ -> ( model, Cmd.none )
-                Ok hours -> ( { model | timeScale = hours }, Cmd.none )
+                Ok hours -> ( { model | timeScale = hours, charts = List.map clearChart model.charts }, Cmd.none )
         Tick newTime ->
-            let readings = Debug.log "Readings"
-            in ( model, Cmd.batch (List.map (\c -> Reading.getByTankLimit c.id (60 * 60 * model.timeScale)
-                                            |> Task.perform Failure (AddReadings c.id))
-                                       model.charts))
+            let getReadings = List.map (\c -> Reading.getByTank
+                                            c.id
+                                            (60 * 60 * model.timeScale |> Just)
+                                            c.lastPulled
+                            |> Task.perform Failure (AddReadings c.id))
+            in ( model, Cmd.batch (getReadings model.charts))
 
 empty : Float
 empty = 1.0
@@ -92,19 +116,18 @@ empty = 1.0
 takeAvg : Int
 takeAvg = 5
 
-mySlice : A.Array ty -> Int -> Int -> List ty
-mySlice arr start end = List.filterMap (\x -> A.get x arr) [start..end]
-
 chartToLevel : Chart -> (ChartID, Level)
 chartToLevel chart =
-    let size = A.length chart.values
+    let size = chart.numValues
         back = Basics.max 0.0 (size - takeAvg - 1 |> toFloat)
-        latestFive = mySlice chart.values (round back) (size - 1)
-        avgVal = (List.foldr (\pt acc -> pt.y + acc) 0 latestFive) / (toFloat size - back)
-        lvl = if avgVal <= empty then "empty"
-              else if avgVal <= chart.red then "red"
-                  else if avgVal <= chart.yellow then "yellow"
-                      else "green"
+        numTaken = (toFloat size - back)
+        latestFive = List.take (round back) chart.values
+        avgVal = (List.foldr (\pt acc -> pt.y + acc) 0 latestFive) / numTaken
+        lvl = if round numTaken == 0 then "noreadings"
+              else if avgVal <= empty then "empty"
+                   else if avgVal <= chart.red then "red"
+                        else if avgVal <= chart.yellow then "yellow"
+                             else "green"
     in (chart.id, lvl)
 
 svgWidth : Float
@@ -131,9 +154,9 @@ yoffset = 0
 ystep : Float
 ystep = (svgHeight - yoffset) / maxY
 
-getRange : A.Array Float -> (Float, Float)
+getRange : List Float -> (Float, Float)
 getRange arr =
-    let (minval, maxval) = A.foldl (\x (cmin, cmax) ->
+    let (minval, maxval) = List.foldl (\x (cmin, cmax) ->
                                         let nmin = Basics.min cmin x
                                             nmax = Basics.max cmax x
                                         in (nmin, nmax)
@@ -142,22 +165,25 @@ getRange arr =
         retMax = if isInfinite maxval then 0 else maxval
     in (retMin, retMax)
 
-arrzip: A.Array a -> A.Array b -> List (a, b)
-arrzip arr1 arr2 =
-    List.map2 (,) (A.toList arr1) (A.toList arr2)
-
 color : Float -> Float -> Float -> String
 color red yellow val =
     if val <= yellow then "green"
     else if val <= red then "yellow"
          else "red"
 
+zip : List a -> List b -> List (a, b)
+zip xs ys =
+    case (xs, ys) of
+        ([], _) -> []
+        (_, []) -> []
+        (x::xrst, y::yrst) -> (x, y) :: zip xrst yrst
+
 renderVals : Chart -> Html Msg
 renderVals chart =
     let vals = chart.values
-        yvals = A.map (\v -> v.y) vals
-        xvals = A.map (\v -> v.x) vals
-        numVals = A.length xvals
+        yvals = List.map (\v -> v.y) vals
+        xvals = List.map (\v -> v.x) vals
+        numVals = List.length xvals
         (minYVal, maxYVal) = getRange yvals
         (minXVal, maxXVal) = getRange xvals
         maxX = maxXVal - minXVal + xoffset
@@ -173,29 +199,25 @@ renderVals chart =
                              , S.x1 (toString left), S.x2 (toString right)
                              , S.color "black", S.strokeWidth "5"] []
         calcX x = xstep * (x - minXVal) + xstep / 2 + xoffset
-        -- _ = Debug.log "XMax" maxXVal * xstep
-        -- _ = Debug.log "XMax1" (maxXVal - minXVal)*xstep
-        -- _ = Debug.log "XMax2" (maxX * xstep)
         calcY y = svgHeight - ystep * y - ystep / 2
         coloring = color (calcY chart.red) (calcY chart.yellow)
-        ypts = A.map calcY yvals
-        xpts = A.map calcX xvals
-        -- xpts = A.initialize numVals (toFloat >> (*) xstep >> (+) xoffset)
+        ypts = List.map calcY yvals
+        xpts = List.map calcX xvals
         ymarginals = List.map (\y -> Svg.line [ S.x1 "0", S.x2 "5", S.strokeWidth "1"
                                               , S.y1 (toString y), S.y2 (toString y)
-                                              ] []) (A.toList ypts)
+                                              ] []) ypts
         xmarginals = List.map (\x -> Svg.line [ S.x1 (toString x), S.x2 (toString x)
                                               , S.strokeWidth "1"
                                               , S.y1 (toString svgHeight), S.y2 (toString (svgHeight - 5))
-                                              ] []) (A.toList xpts)
+                                              ] []) xpts
         pts = List.map (\ (x,y) -> Svg.circle [ S.cx (toString x)
                                            , S.cy (toString y)
                                            , S.r "3"
                                            , coloring y |> S.fill
-                                           ] [] ) (arrzip xpts ypts)
-        lines = if A.isEmpty ypts then []
-                else let ay = Maybe.withDefault -1 (A.get 0 ypts)
-                         ax = Maybe.withDefault -1 (A.get 0 xpts)
+                                           ] [] ) (zip xpts ypts)
+        lines = if List.isEmpty ypts then []
+                else let ay = Maybe.withDefault -1 (List.head ypts)
+                         ax = Maybe.withDefault -1 (List.head xpts)
                     in fst
                         (List.foldl
                              (\ (x', y') (ls, (xacc, yacc)) ->
@@ -205,7 +227,7 @@ renderVals chart =
                                   , (x', y'))
                              )
                              ([], (ax, ay))
-                             (arrzip xpts ypts))
+                             (zip xpts ypts))
         marginals = ymarginals ++ xmarginals
         allTogether = marginals ++ pts ++ lines
     in
@@ -221,8 +243,6 @@ viewChart chart =
     div [ class "chart-region" ]
      [ div [] [ text ("Chart for Location " ++ chartLocation chart) ]
      , div [] [ button [ onClick (ClearChart chart.id) ] [ text "Clear Chart" ] ]
-     -- , div [] [ button [ onClick (UpdateChart chart.id 10.0) ] [ text "Refill Tank" ] ]
-     -- , div [] [ button [ onClick (UpdateChart chart.id -20.0) ] [ text "Empty Tank" ] ]
      , div [ class "chart" ] [ renderVals chart ] ]
 
 getCurrentCharts : Model -> List Chart
@@ -235,7 +255,8 @@ view : Model -> Html Msg
 view model = div
              [ id "viewing-area" ]
              [ div [ class "charts" ] (List.map viewChart (getCurrentCharts model)) ,
-                   div [] [ input [ type' "number", placeholder "12", onInput ChangeScale ] []]
+                   div [] [ text "Hours to View"
+                          , input [ type' "number", placeholder "12", onInput ChangeScale ] []]
              ]
 
 subscriptions : Model -> Sub Msg

@@ -17,8 +17,7 @@ import Queries.Reading
 type ReadingAPI =
   Get '[JSON] [ReadingRead]
   :<|> Capture "id" ReadingID :> Get '[JSON] (Maybe ReadingRead)
-  :<|> "tank" :> Capture "tank" TankID :> Get '[JSON] [ReadingRead]
-  :<|> "tank" :> Capture "tank" TankID :> Capture "seconds" Integer :> Get '[JSON] [ReadingRead]
+  :<|> "tank" :> Capture "tank" TankID :> QueryParam "seconds" Integer :> QueryParam "lastreading" ReadingID :> Get '[JSON] [ReadingRead]
   :<|> "hub" :> Capture "hub" HubID :> Get '[JSON] [ReadingRead]
   :<|> "yellow" :> Capture "yellow" HubID :> Get '[JSON] [ReadingRead]
   :<|> "red" :> Capture "red" HubID :> Get '[JSON] [ReadingRead]
@@ -31,7 +30,6 @@ readingServer :: ServerT ReadingAPI AppM
 readingServer = getReadings
             :<|> getReadingById
             :<|> getReadingsByTank
-            :<|> getReadingsByTankLimit
             :<|> getReadingsByHub
             :<|> getYellowReadingsByHub
             :<|> getRedReadingsByHub
@@ -47,17 +45,18 @@ getReadingById readingID = do
   con <- getConn
   liftIO $ listToMaybe <$> O.runQuery con (readingByIdQuery readingID)
 
-getReadingsByTank :: TankID -> AppM [ReadingRead]
-getReadingsByTank tankID = do
-  con <- getConn
-  liftIO $ O.runQuery con (O.orderBy (O.asc readingSensorSent) $ readingsByTankQuery tankID)
-
-getReadingsByTankLimit :: TankID -> Integer -> AppM [ReadingRead]
-getReadingsByTankLimit tankID seconds = do
+getReadingsByTank :: TankID -> Maybe Integer -> Maybe ReadingID -> AppM [ReadingRead]
+getReadingsByTank tankID mseconds mreading = do
   con <- getConn
   now <- liftIO DT.getCurrentTime
-  liftIO $ O.runQuery con (O.orderBy (O.asc readingSensorSent) $
-                            readingsByTankLimitQuery tankID $ DT.addSeconds (-1*seconds) now)
+  addToLogger $ show mseconds
+  addToLogger $ show mreading
+  let query = case (mseconds, mreading) of
+        (Nothing, Nothing) -> readingsByTankQuery tankID
+        (Nothing, Just rid) -> readingsByTankIdQuery tankID rid
+        (Just seconds, Nothing) -> readingsByTankLimitQuery tankID $ DT.addSeconds (-1*seconds) now
+        (Just seconds, Just rid) -> readingsByTankLimitIdQuery tankID (DT.addSeconds (-1*seconds) now) rid
+  liftIO $ O.runQuery con (O.orderBy (O.asc readingSensorSent) query)
 
 getReadingsByHub :: HubID -> AppM [ReadingRead]
 getReadingsByHub hubID = do
