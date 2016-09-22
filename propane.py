@@ -46,7 +46,7 @@ def synth_tank(id_):
         "%Y-%m-%dT%H:%M:%S.%fZ")
       print(obj['sensorsent'])
       req.post("http://127.0.0.1:8080/readings", json=obj)
-    sleep(1.0)
+    sleep(10.0)
     ct += 1
   print("{} finished".format(id_))
 
