@@ -144,26 +144,29 @@ update msg model =
         RouteRed ->
             let levels = List.map chartToLevel model.charts
                 noreadings = if model.includeNoReadings
-                             then List.filter (\ (_, l) -> l == "noreadings") levels
+                             then List.filter (snd >> (==) "noreadings") levels
                                  |> List.map fst
                              else []
-                manual = List.filter (\c -> c.manual) model.charts |> List.map .id
-                low = List.filter (\ (i, l) -> l == "red" || l == "empty") levels
+                manual = List.filter .manual model.charts |> List.map .id
+                low = List.filter (snd >> \l -> l == "red" || l == "empty") levels
                     |> List.map fst
             in ( model, sendRoutes {manual = manual, noreadings = noreadings, low = low})
         RouteYellow ->
             let levels = List.map chartToLevel model.charts
                 noreadings = if model.includeNoReadings
-                             then List.filter (\ (_, l) -> l == "noreadings") levels
+                             then List.filter (snd >> (==) "noreadings") levels
                                  |> List.map fst
                              else []
-                manual = List.filter (\c -> c.manual) model.charts |> List.map .id
-                low = List.filter (\ (i, l) -> l == "yellow" || l == "red" || l == "empty") levels
+                manual = List.filter .manual model.charts |> List.map .id
+                low = List.filter (snd >> \l ->
+                                       l == "yellow" || l == "red" || l == "empty")
+                      levels
                     |> List.map fst
             in ( model, sendRoutes {manual = manual, noreadings = noreadings, low = low})
         FastTick newTime ->
             ( model, Cmd.batch
-                    (List.map (\c -> let (i, l) = chartToLevel c in setColor (i, l, c.manual)) model.charts))
+                    (List.map (\c -> let (i, l) = chartToLevel c
+                                     in setColor (i, l, c.manual)) model.charts))
         SlowTick newTime ->
             let getReadings = List.map (\c -> Reading.getByTank
                                             c.id
