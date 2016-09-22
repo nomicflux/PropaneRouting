@@ -27,6 +27,18 @@ readingsByTankQuery tank = proc () -> do
   O.restrict -< readingTank reading .== O.pgInt8 tank
   returnA -< reading
 
+dateLimit :: O.QueryArr (O.Column O.PGTimestamptz) ReadingColRead
+dateLimit = proc (since) -> do
+  reading <- readingsQuery -< ()
+  O.restrict -< readingSensorSent reading .>= since
+  returnA -< reading
+
+idLimit :: O.QueryArr (O.Column O.PGInt8) ReadingColRead
+idLimit = proc (rid) -> do
+  reading <- readingsQuery -< ()
+  O.restrict -< readingId reading .> rid
+  returnA -< reading
+
 readingsByTankLimitQuery :: TankID -> DateTime -> O.Query ReadingColRead
 readingsByTankLimitQuery tank since = proc () -> do
   reading <- readingsQuery -< ()
