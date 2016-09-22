@@ -14,22 +14,11 @@ import Task
 import Http
 import Debug
 import Time exposing (Time, second, millisecond)
-import Date exposing (Date, year, month, day, hour, minute)
 import HubAPI as Hub
 import TankAPI as Tank
 import ReadingAPI as Reading
+import Chart exposing (..)
 
-type alias Chart = { id : ChartID
-                   , pos : GMPos
-                   , values : List ChartPt
-                   , numValues : Int
-                   , yellow : Float
-                   , red : Float
-                   , lastPulled : Maybe Int
-                   , earliestDate : Maybe Date
-                   , latestDate : Maybe Date
-                   , manual : Bool
-                   }
 type alias Model = { charts : List Chart
                    , numCharts : Int
                    , currChart : Maybe ChartID
@@ -52,6 +41,13 @@ type Msg = ClearChart ChartID
          | FastTick Time
          | SlowTick Time
 
+zip : List a -> List b -> List (a, b)
+zip xs ys =
+    case (xs, ys) of
+        ([], _) -> []
+        (_, []) -> []
+        (x::xrst, y::yrst) -> (x, y) :: zip xrst yrst
+
 initialModel : Model
 initialModel = { charts = [ ]
                , numCharts = 0
@@ -59,42 +55,6 @@ initialModel = { charts = [ ]
                , timeScale = 12
                , includeNoReadings = False
                }
-
-addReadings : ChartID -> List Reading.ReadingRead -> Chart -> Chart
-addReadings id vals chart =
-    if chart.id /= id
-        then chart
-        else
-            let earliestReading = List.head vals
-                reversed = List.reverse vals
-                latestReading = List.head reversed
-                newVals = List.map (\v -> { x = v.readingSensorSent
-                                          , y = v.readingValue})
-                          reversed
-                lastPulled = Maybe.map .readingId latestReading
-                earliestDate = Maybe.map .readingDbReceived earliestReading
-                latestDate = Maybe.map .readingDbReceived latestReading
-            in { chart | values =  newVals ++ chart.values
-               , numValues = chart.numValues + List.length vals
-               , lastPulled = Maybe.oneOf [lastPulled, chart.lastPulled]
-               , latestDate = Maybe.oneOf [latestDate, chart.latestDate]
-               , earliestDate = Maybe.oneOf [chart.earliestDate, earliestDate]
-               }
-
-clearChart : Chart -> Chart
-clearChart chart =
-    { chart | values = []
-    , numValues = 0
-    , lastPulled = Nothing
-    , earliestDate = Nothing
-    , latestDate = Nothing
-    }
-
-toggleManual : ChartID -> Chart -> Chart
-toggleManual cid chart =
-    if chart.id == cid
-    then { chart | manual = not chart.manual }
-    else chart
 
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
@@ -175,25 +135,12 @@ update msg model =
                             |> Task.perform Failure (AddReadings c.id))
             in ( model, Cmd.batch (getReadings model.charts))
 
-empty : Float
-empty = 1.0
+getCurrentCharts : Model -> List Chart
+getCurrentCharts model =
+    case model.currChart of
+        Nothing -> []
+        Just pos -> List.filter (\c -> c.id == pos) model.charts
 
-takeAvg : Int
-takeAvg = 5
-
-chartToLevel : Chart -> (ChartID, Level)
-chartToLevel chart =
-    let size = chart.numValues
-        back = Basics.max 0.0 (size - takeAvg - 1 |> toFloat)
-        numTaken = (toFloat size - back)
-        latestFive = List.take (round numTaken) chart.values
-        avgVal = (List.foldr (\pt acc -> pt.y + acc) 0 latestFive) / numTaken
-        lvl = if round numTaken == 0 then "noreadings"
-              else if avgVal <= empty then "empty"
-                   else if avgVal <= chart.red then "red"
-                        else if avgVal <= chart.yellow then "yellow"
-                             else "green"
-    in (chart.id, lvl)
 
 svgWidth : Float
 svgWidth = 600
@@ -213,29 +160,6 @@ yoffset = 0
 ystep : Float
 ystep = (svgHeight - yoffset) / maxY
 
-getRange : List Float -> (Float, Float)
-getRange arr =
-    let (minval, maxval) = List.foldl (\x (cmin, cmax) ->
-                                        let nmin = Basics.min cmin x
-                                            nmax = Basics.max cmax x
-                                        in (nmin, nmax)
-                                   ) (1/0, -1/0) arr
-        retMin = if isInfinite minval then 0 else minval
-        retMax = if isInfinite maxval then 0 else maxval
-    in (retMin, retMax)
-
-color : Float -> Float -> Float -> String
-color red yellow val =
-    if val <= yellow then "green"
-    else if val <= red then "yellow"
-         else "red"
-
-zip : List a -> List b -> List (a, b)
-zip xs ys =
-    case (xs, ys) of
-        ([], _) -> []
-        (_, []) -> []
-        (x::xrst, y::yrst) -> (x, y) :: zip xrst yrst
 
 renderVals : Chart -> Html Msg
 renderVals chart =
@@ -305,33 +229,12 @@ renderVals chart =
                 , S.width (toString svgWidth) ]
             (leftBar :: bottomBar :: allTogether)
 
-minLen : Int -> String
-minLen x = if x < 10 then "0" ++ toString x else toString x
-
-showDate : Date -> String
-showDate date =
-    let hr = hour date |> minLen
-        mn = minute date |> minLen
-        yr = year date |> toString
-        mt = month date |> toString
-        dy = day date |> toString
-    in yr ++ "-" ++ mt ++ "-" ++ dy ++ " " ++ hr ++ ":" ++ mn
-
-chartLocation : Chart -> String
-chartLocation chart = toString chart.id
-
 viewChart : Chart -> Html Msg
 viewChart chart =
     div [ class "chart-region" ]
      [ div [] [ text ("Chart for Location " ++ chartLocation chart) ]
      , div [] [ button [ onClick (ClearChart chart.id) ] [ text "Clear Chart" ] ]
      , div [ class "chart" ] [ renderVals chart ] ]
-
-getCurrentCharts : Model -> List Chart
-getCurrentCharts model =
-    case model.currChart of
-        Nothing -> []
-        Just pos -> List.filter (\c -> c.id == pos) model.charts
 
 view : Model -> Html Msg
 view model = div
