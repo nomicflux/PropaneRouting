@@ -71,9 +71,9 @@ addReadings id vals chart =
                 newVals = List.map (\v -> { x = v.readingSensorSent
                                           , y = v.readingValue})
                           reversed
-                lastPulled = Maybe.map (\r -> r.readingId) latestReading
-                earliestDate = Maybe.map (\r -> r.readingDbReceived) earliestReading
-                latestDate = Maybe.map (\r -> r.readingDbReceived) latestReading
+                lastPulled = Maybe.map .readingId latestReading
+                earliestDate = Maybe.map .readingDbReceived earliestReading
+                latestDate = Maybe.map .readingDbReceived latestReading
             in { chart | values =  newVals ++ chart.values
                , numValues = chart.numValues + List.length vals
                , lastPulled = Maybe.oneOf [lastPulled, chart.lastPulled]
@@ -145,21 +145,21 @@ update msg model =
             let levels = List.map chartToLevel model.charts
                 noreadings = if model.includeNoReadings
                              then List.filter (\ (_, l) -> l == "noreadings") levels
-                                 |> List.map (\ (i, _) -> i)
+                                 |> List.map fst
                              else []
-                manual = List.filter (\c -> c.manual) model.charts |> List.map (\c -> c.id)
+                manual = List.filter (\c -> c.manual) model.charts |> List.map .id
                 low = List.filter (\ (i, l) -> l == "red" || l == "empty") levels
-                    |> List.map (\ (i, _) -> i)
+                    |> List.map fst
             in ( model, sendRoutes {manual = manual, noreadings = noreadings, low = low})
         RouteYellow ->
             let levels = List.map chartToLevel model.charts
                 noreadings = if model.includeNoReadings
                              then List.filter (\ (_, l) -> l == "noreadings") levels
-                                 |> List.map (\ (i, _) -> i)
+                                 |> List.map fst
                              else []
-                manual = List.filter (\c -> c.manual) model.charts |> List.map (\c -> c.id)
+                manual = List.filter (\c -> c.manual) model.charts |> List.map .id
                 low = List.filter (\ (i, l) -> l == "yellow" || l == "red" || l == "empty") levels
-                    |> List.map (\ (i, _) -> i)
+                    |> List.map fst
             in ( model, sendRoutes {manual = manual, noreadings = noreadings, low = low})
         FastTick newTime ->
             ( model, Cmd.batch
@@ -237,8 +237,8 @@ zip xs ys =
 renderVals : Chart -> Html Msg
 renderVals chart =
     let vals = chart.values
-        yvals = List.map (\v -> v.y) vals
-        xvals = List.map (\v -> v.x) vals
+        yvals = List.map .y vals
+        xvals = List.map .x vals
         numVals = List.length xvals
         (minYVal, maxYVal) = getRange yvals
         (minXVal, maxXVal) = getRange xvals
