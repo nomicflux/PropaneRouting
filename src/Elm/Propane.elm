@@ -28,6 +28,7 @@ type alias Chart = { id : ChartID
                    , lastPulled : Maybe Int
                    , earliestDate : Maybe Date
                    , latestDate : Maybe Date
+                   , manual : Bool
                    }
 type alias Model = { charts : List Chart
                    , numCharts : Int
@@ -44,6 +45,7 @@ type Msg = ClearChart ChartID
          | AddReadings ChartID (List Reading.ReadingRead)
          | Failure Http.Error
          | ChangeScale String
+         | ToggleManual ChartID
          | ToggleNoReadings
          | RouteRed
          | RouteYellow
@@ -87,6 +89,12 @@ clearChart chart =
     , latestDate = Nothing
     }
 
+toggleManual : ChartID -> Chart -> Chart
+toggleManual cid chart =
+    if chart.id == cid
+    then { chart | manual = not chart.manual }
+    else chart
+
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
     case msg of
@@ -103,6 +111,7 @@ update msg model =
                            , lastPulled = Nothing
                            , earliestDate = Nothing
                            , latestDate = Nothing
+                           , manual = False
                            }
                 newCt = model.numCharts + 1
             in ( { model | charts = newChart :: model.charts, numCharts = newCt }, Cmd.none)
@@ -119,7 +128,7 @@ update msg model =
         AddReadings idx readings ->
             let newCharts = List.map (addReadings idx readings) model.charts
             in ({ model | charts = newCharts}, Cmd.batch
-                    (List.map (setColor << chartToLevel) newCharts) )
+                    (List.map (\c -> let (i, l) = chartToLevel c in setColor (i, l, c.manual)) newCharts) )
         Failure err ->
             let _ = Debug.log (toString err) err
             in ( model, Cmd.none )
@@ -127,18 +136,31 @@ update msg model =
             case String.toInt shours of
                 Err _ -> ( model, Cmd.none )
                 Ok hours -> ( { model | timeScale = hours, charts = List.map clearChart model.charts }, Cmd.none )
+        ToggleManual cid ->
+            let charts = List.map (toggleManual cid) model.charts
+            in ( { model | charts = charts }, Cmd.none )
         ToggleNoReadings ->
             ( { model | includeNoReadings = not model.includeNoReadings }, Cmd.none)
         RouteRed ->
-            let charts = List.map chartToLevel model.charts
-                       |> List.filter (\ (i, l) -> l == "red" || l == "empty" || (l == "noreadings" && model.includeNoReadings))
-                       |> List.map (\ (i, _) -> i)
-            in ( model, sendRedRoutes charts)
+            let levels = List.map chartToLevel model.charts
+                noreadings = if model.includeNoReadings
+                             then List.filter (\ (_, l) -> l == "noreadings") levels
+                                 |> List.map (\ (i, _) -> i)
+                             else []
+                manual = List.filter (\c -> c.manual) model.charts |> List.map (\c -> c.id)
+                low = List.filter (\ (i, l) -> l == "red" || l == "empty") levels
+                    |> List.map (\ (i, _) -> i)
+            in ( model, sendRoutes {manual = manual, noreadings = noreadings, low = low})
         RouteYellow ->
-            let charts = List.map chartToLevel model.charts
-                       |> List.filter (\ (i, l) -> l == "yellow" || l == "red" || l == "empty" || (l == "noreadings" && model.includeNoReadings))
-                       |> List.map (\ (i, _) -> i)
-            in ( model, sendYellowRoutes charts)
+            let levels = List.map chartToLevel model.charts
+                noreadings = if model.includeNoReadings
+                             then List.filter (\ (_, l) -> l == "noreadings") levels
+                                 |> List.map (\ (i, _) -> i)
+                             else []
+                manual = List.filter (\c -> c.manual) model.charts |> List.map (\c -> c.id)
+                low = List.filter (\ (i, l) -> l == "yellow" || l == "red" || l == "empty") levels
+                    |> List.map (\ (i, _) -> i)
+            in ( model, sendRoutes {manual = manual, noreadings = noreadings, low = low})
         Tick newTime ->
             let getReadings = List.map (\c -> Reading.getByTank
                                             c.id
@@ -325,6 +347,7 @@ subscriptions model =
     Sub.batch
         [ addMarker AddChart
         , markerClicked MarkerClicked
+        , markerDblClicked ToggleManual
         -- , addToMarker (\chartval -> AddToChart chartval.id chartval.value)
         -- , updateMarker (\chartval -> UpdateChart chartval.id chartval.value)
         , Time.every second Tick

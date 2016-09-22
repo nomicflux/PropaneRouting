@@ -1,6 +1,6 @@
 import requests as req
 import json
-from random import randint
+from random import randint, random
 from datetime import datetime
 from time import sleep
 from multiprocessing import Pool
@@ -31,23 +31,24 @@ def clamp(val, mn, mx):
 
 def synth_tank(id_):
   reading = 3072
-  ct = 0
   obj = {'tank': id_}
   skipping = skip[id_]
   lower_bd = lower[id_]
   upper_bd = upper[id_]
-  while ct < 512:
+  while True:
     send = randint(0,7)
     if send < skipping:
-      reading += randint(lower_bd, upper_bd)
+      if 1.0 / (float(reading) + 1.0) > 4.0 * random():
+        reading = 3072
+      else:
+        reading += randint(lower_bd, upper_bd)
       reading = clamp(reading, 0, 4096)
       obj['value'] = reading
       obj['sensorsent'] = datetime.strftime(datetime.utcnow(),
         "%Y-%m-%dT%H:%M:%S.%fZ")
-      print(obj['sensorsent'])
+      print(obj['sensorsent'], reading)
       req.post("http://127.0.0.1:8080/readings", json=obj)
     sleep(10.0)
-    ct += 1
   print("{} finished".format(id_))
 
 if __name__ == "__main__":

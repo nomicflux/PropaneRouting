@@ -8,9 +8,7 @@ port addMarker : ((ChartID, GMPos, Float, Float) -> msg) -> Sub msg
 
 port markerClicked : (ChartID -> msg) -> Sub msg
 
--- port addToMarker : (ChartVal -> msg) -> Sub msg
-
--- port updateMarker : (ChartVal -> msg) -> Sub msg
+port markerDblClicked : (ChartID -> msg) -> Sub msg
 
 -- Outgoing
 
@@ -18,10 +16,6 @@ port addHub : GMPos -> Cmd msg
 
 port addTank : (ChartID, GMPos, Float, Float) -> Cmd msg
 
-port setColor : (ChartID, Level) -> Cmd msg
+port setColor : (ChartID, Level, Bool) -> Cmd msg
 
-port sendRedRoutes : List ChartID -> Cmd msg
-
-port sendYellowRoutes : List ChartID -> Cmd msg
-
--- port sendChartVal : List ChartVal -> Cmd msg
+port sendRoutes : RoutedTanks -> Cmd msg

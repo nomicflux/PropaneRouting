@@ -2,7 +2,6 @@ function initMap() {
     var currentWaypoints = {};
     var pastWaypoints = {};
     var markers = {};
-    var manualClick = {};
 
     var app = Elm.Propane.embed(document.getElementById("elm-area"));
 
@@ -73,7 +72,7 @@ function initMap() {
             map: gmap
         });
         marker.addListener('click', markerCallback(app, id));
-        marker.addListener('dblclick', markerDblCallback(app, id, manualClick));
+        marker.addListener('dblclick', markerDblCallback(app, id));
         // setInterval(sendDataCallback(app, id, redoDirections), resolution);
         markers[id] = marker;
         app.ports.addMarker.send(posyr);
@@ -82,41 +81,32 @@ function initMap() {
     app.ports.setColor.subscribe(function(val) {
         var chart = val[0];
         var color = val[1];
+        var manual = val[2];
         if(color == "empty") {
             color = "pink";
         } else if(color == "noreadings") {
             color = "blue";
         }
-        var letter = "T";
-        if(manualClick.hasOwnProperty(chart)) {
-            letter = "M";
-        }
+        var letter = manual ? "M" : "T";
         markers[chart].set("icon","Google Maps Markers/"+color+"_Marker"+letter+".png");
     });
 
-    app.ports.sendRedRoutes.subscribe(function(val) {
+    app.ports.sendRoutes.subscribe(function(val) {
         currentWaypoints = {};
-        for(var k in manualClick) {
-            currentWaypoints[k] = {'location': markers[k].position, stopover: true};
+        for(var r in val.manual) {
+            var manual = val.manual[r];
+            var marker = markers[manual];
+            currentWaypoints[manual] = {'location': marker.position, stopover: true};
         }
-        console.log(currentWaypoints);
-        for(var r in val) {
-            var red = val[r];
-            var marker = markers[red];
-            currentWaypoints[red] = {'location': marker.position, stopover: true};
+        for(var r in val.noreadings) {
+            var none = val.noreadings[r];
+            var marker = markers[none];
+            currentWaypoints[none] = {'location': marker.position, stopover: true};
         };
-        redoDirections();
-    });
-
-    app.ports.sendYellowRoutes.subscribe(function(val) {
-        currentWaypoints = {};
-        for(var k in manualClick) {
-            currentWaypoints[k] = {'location': markers[k].position, stopover: true};
-        }
-        for(var y in val) {
-            var yellow = val[y];
-            var marker = markers[yellow];
-            currentWaypoints[yellow] = {'location': marker.position, stopover: true};
+        for(var r in val.low) {
+            var low = val.low[r];
+            var marker = markers[low];
+            currentWaypoints[low] = {'location': marker.position, stopover: true};
         };
         redoDirections();
     });
@@ -159,13 +149,14 @@ function markerCallback(app, id) {
     };
 }
 
-function markerDblCallback(app, id, manualClick) {
+function markerDblCallback(app, id) {
     return function() {
-        if(manualClick.hasOwnProperty(id)) {
-            delete manualClick[id];
-        } else {
-            manualClick[id] = true;
-        }
+        app.ports.markerDblClicked.send(id);
+        // if(manualClick.hasOwnProperty(id)) {
+        //     delete manualClick[id];
+        // } else {
+        //     manualClick[id] = true;
+        // }
     };
 }
 
