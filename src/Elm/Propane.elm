@@ -13,7 +13,7 @@ import GMPorts exposing (..)
 import Task
 import Http
 import Debug
-import Time exposing (Time, second)
+import Time exposing (Time, second, millisecond)
 import Date exposing (Date, year, month, day, hour, minute)
 import HubAPI as Hub
 import TankAPI as Tank
@@ -49,7 +49,8 @@ type Msg = ClearChart ChartID
          | ToggleNoReadings
          | RouteRed
          | RouteYellow
-         | Tick Time
+         | FastTick Time
+         | SlowTick Time
 
 initialModel : Model
 initialModel = { charts = [ ]
@@ -127,8 +128,7 @@ update msg model =
             ( model, Cmd.batch (List.map (\t -> addTank (t.tankId, {lat=t.tankLat, lng=t.tankLng}, t.tankYellow, t.tankRed)) tanks))
         AddReadings idx readings ->
             let newCharts = List.map (addReadings idx readings) model.charts
-            in ({ model | charts = newCharts}, Cmd.batch
-                    (List.map (\c -> let (i, l) = chartToLevel c in setColor (i, l, c.manual)) newCharts) )
+            in ({ model | charts = newCharts}, Cmd.none )
         Failure err ->
             let _ = Debug.log (toString err) err
             in ( model, Cmd.none )
@@ -161,7 +161,10 @@ update msg model =
                 low = List.filter (\ (i, l) -> l == "yellow" || l == "red" || l == "empty") levels
                     |> List.map (\ (i, _) -> i)
             in ( model, sendRoutes {manual = manual, noreadings = noreadings, low = low})
-        Tick newTime ->
+        FastTick newTime ->
+            ( model, Cmd.batch
+                    (List.map (\c -> let (i, l) = chartToLevel c in setColor (i, l, c.manual)) model.charts))
+        SlowTick newTime ->
             let getReadings = List.map (\c -> Reading.getByTank
                                             c.id
                                             (60 * 60 * model.timeScale |> Just)
@@ -350,7 +353,8 @@ subscriptions model =
         , markerDblClicked ToggleManual
         -- , addToMarker (\chartval -> AddToChart chartval.id chartval.value)
         -- , updateMarker (\chartval -> UpdateChart chartval.id chartval.value)
-        , Time.every second Tick
+        , Time.every (2*second) SlowTick
+        , Time.every (500*millisecond) FastTick
         ]
 
 main : Program Never
