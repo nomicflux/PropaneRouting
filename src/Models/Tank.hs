@@ -68,8 +68,8 @@ tankTable :: O.Table TankColWrite TankColRead
 tankTable = O.Table "tanks" (pTank Tank { tankId = O.optional "id"
                                         , tankHub = O.required "hub"
                                         , tankName = O.required "name"
-                                        , tankYellow = O.optional "yellowThreshold"
-                                        , tankRed = O.optional "redThreshold"
+                                        , tankYellow = O.optional "yellow_threshold"
+                                        , tankRed = O.optional "red_threshold"
                                         , tankLat = O.required "lat"
                                         , tankLng = O.required "lng"
                                         })

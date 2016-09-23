@@ -29,6 +29,22 @@ COMMENT ON EXTENSION plpgsql IS 'PL/pgSQL procedural language';
 
 SET search_path = public, pg_catalog;
 
+--
+-- Name: notify_reading_added(); Type: FUNCTION; Schema: public; Owner: gasmasters
+--
+
+CREATE FUNCTION notify_reading_added() RETURNS trigger 
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+    PERFORM pg_notify('addedreading', NEW.tank);
+    RETURN NEW;
+END;
+$$;
+
+
+ALTER FUNCTION public.notify_reading_added() OWNER TO gasmasters;
+
 SET default_tablespace = '';
 
 SET default_with_oids = false;
@@ -114,8 +130,8 @@ CREATE TABLE tanks (
     name character varying(255) NOT NULL,
     lng double precision NOT NULL,
     lat double precision NOT NULL,
-    "yellowThreshold" integer DEFAULT 1024,
-    "redThreshold" integer DEFAULT 512
+    yellow_threshold integer DEFAULT 1024,
+    red_threshold integer DEFAULT 512
 );
 
 
@@ -185,6 +201,15 @@ ALTER TABLE ONLY readings
 
 ALTER TABLE ONLY tanks
     ADD CONSTRAINT tanks_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: updated_readings_trigger; Type: TRIGGER; Schema: public; Owner: gasmasters
+--
+
+CREATE TRIGGER updated_readings_trigger AFTER INSERT ON readings FOR EACH ROW EXECUTE PROCEDURE notify_reading_added();
+
+NOTIFY addedreading;
 
 
 --

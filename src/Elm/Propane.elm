@@ -5,6 +5,7 @@ import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onClick, onInput)
 import String
+import Set exposing (Set)
 -- import Result exposing (Result)
 import Svg
 import Svg.Attributes as S
@@ -24,6 +25,7 @@ type alias Model = { charts : List Chart
                    , currChart : Maybe ChartID
                    , timeScale : Int
                    , includeNoReadings : Bool
+                   , chartsToRead : Set ChartID
                    }
 
 type Msg = ClearChart ChartID
@@ -35,6 +37,7 @@ type Msg = ClearChart ChartID
          | Failure Http.Error
          | ChangeScale String
          | ToggleManual ChartID
+         | NewReading (Maybe ChartID)
          | ToggleNoReadings
          | RouteRed
          | RouteYellow
@@ -54,6 +57,7 @@ initialModel = { charts = [ ]
                , currChart = Nothing
                , timeScale = 12
                , includeNoReadings = False
+               , chartsToRead = Set.empty
                }
 
 update : Msg -> Model -> (Model, Cmd Msg)
@@ -61,7 +65,9 @@ update msg model =
     case msg of
         ClearChart idx ->
             let newCharts = List.map (\c -> if c.id == idx then clearChart c else c) model.charts
-            in ({ model | charts = newCharts}, Cmd.none )
+            in ({ model | charts = newCharts
+                , chartsToRead = Set.insert idx model.chartsToRead
+                }, Cmd.none )
         AddChart (id, pos, yellow, red) ->
             let newChart = { id = id
                            , pos = pos
@@ -75,7 +81,10 @@ update msg model =
                            , manual = False
                            }
                 newCt = model.numCharts + 1
-            in ( { model | charts = newChart :: model.charts, numCharts = newCt }, Cmd.none)
+            in ( { model | charts = newChart :: model.charts
+                 , numCharts = newCt
+                 , chartsToRead = Set.insert id model.chartsToRead
+                 }, Cmd.none)
         MarkerClicked pos ->
             ( { model | currChart = Just pos }, Cmd.none )
         AddHub mhub ->
@@ -88,19 +97,28 @@ update msg model =
             ( model, Cmd.batch (List.map (\t -> addTank (t.tankId, {lat=t.tankLat, lng=t.tankLng}, t.tankYellow, t.tankRed)) tanks))
         AddReadings idx readings ->
             let newCharts = List.map (addReadings idx readings) model.charts
-            in ({ model | charts = newCharts}, Cmd.none )
+            in ({ model | charts = newCharts
+                , chartsToRead = Set.remove idx model.chartsToRead}, Cmd.none )
         Failure err ->
             let _ = Debug.log (toString err) err
             in ( model, Cmd.none )
         ChangeScale shours ->
             case String.toInt shours of
                 Err _ -> ( model, Cmd.none )
-                Ok hours -> ( { model | timeScale = hours, charts = List.map clearChart model.charts }, Cmd.none )
+                Ok hours -> ( { model | timeScale = hours
+                              , charts = List.map clearChart model.charts
+                              , chartsToRead = Set.fromList (List.map .id model.charts)
+                              }, Cmd.none )
         ToggleManual cid ->
             let charts = List.map (toggleManual cid) model.charts
             in ( { model | charts = charts }, Cmd.none )
         ToggleNoReadings ->
             ( { model | includeNoReadings = not model.includeNoReadings }, Cmd.none)
+        NewReading midx ->
+            case midx of
+                Nothing -> (model, Cmd.none)
+                Just idx ->
+                    ( { model | chartsToRead = Set.insert idx model.chartsToRead }, Cmd.none)
         RouteRed ->
             let levels = List.map chartToLevel model.charts
                 noreadings = if model.includeNoReadings
@@ -124,16 +142,27 @@ update msg model =
                     |> List.map fst
             in ( model, sendRoutes {manual = manual, noreadings = noreadings, low = low})
         FastTick newTime ->
-            ( model, Cmd.batch
-                    (List.map (\c -> let (i, l) = chartToLevel c
-                                     in setColor (i, l, c.manual)) model.charts))
+            let
+                setColors = List.map (\c -> let (i, l) = chartToLevel c
+                                           in setColor (i, l, c.manual)) model.charts
+                newReading = Tank.getNotifications |> Task.perform Failure NewReading
+            in
+                ( model
+                , newReading :: setColors |> Cmd.batch )
         SlowTick newTime ->
-            let getReadings = List.map (\c -> Reading.getByTank
-                                            c.id
-                                            (60 * 60 * model.timeScale |> Just)
-                                            c.lastPulled
-                            |> Task.perform Failure (AddReadings c.id))
-            in ( model, Cmd.batch (getReadings model.charts))
+            let getReadings = \toRead -> List.filterMap
+                              (\c ->
+                                   if Set.member c.id toRead || c.lastPulled == Nothing
+                                   then
+                                       Reading.getByTank
+                                           c.id
+                                           (60 * 60 * model.timeScale |> Just)
+                                           c.lastPulled
+                                       |> Task.perform Failure (AddReadings c.id)
+                                       |> Just
+                                   else Nothing)
+            in ( model
+               , Cmd.batch (getReadings model.chartsToRead model.charts))
 
 getCurrentCharts : Model -> List Chart
 getCurrentCharts model =
@@ -259,7 +288,7 @@ subscriptions model =
         , markerDblClicked ToggleManual
         -- , addToMarker (\chartval -> AddToChart chartval.id chartval.value)
         -- , updateMarker (\chartval -> UpdateChart chartval.id chartval.value)
-        , Time.every (2*second) SlowTick
+        , Time.every (2 * second) SlowTick
         , Time.every (500*millisecond) FastTick
         ]
 

@@ -28,8 +28,6 @@ import App (Config ( .. )
 import Api.Hub
 import Api.Tank
 import Api.Reading
-import ElmGen
-import Servant.Elm (specsToDir)
 
 data ConnectionInfo = ConnectionInfo
                       { connUser :: String
@@ -61,7 +59,9 @@ connInfoToPG connInfo = PGS.defaultConnectInfo
 openConnection :: IO PGS.Connection
 openConnection = do
   connInfo <- getConnInfo
-  PGS.connect (connInfoToPG connInfo)
+  con <- PGS.connect (connInfoToPG connInfo)
+  PGS.execute_ con "LISTEN addedreading"
+  return con
 
 makeLogger :: LogTo -> IO FL.LoggerSet
 makeLogger logTo = case logTo of

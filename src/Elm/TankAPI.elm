@@ -5,6 +5,9 @@ import Json.Decode.Extra exposing ((|:))
 import Json.Encode
 import Http
 import Task
+import String exposing (toInt)
+import Result exposing (toMaybe)
+import Debug exposing (crash)
 -- import Exts.Date exposing(toISOString)
 -- import Date exposing (Date)
 
@@ -60,6 +63,28 @@ get =
     Http.fromJson
       (Json.Decode.list decodeTankRead)
       (Http.send Http.defaultSettings request)
+
+getNotifications : Task.Task Http.Error (Maybe Int)
+getNotifications =
+    let
+        request =
+            { verb = "GET"
+            , headers = [("Content-Type", "application/octet-stream")]
+            , url = "/tanks/notifications"
+            , body = Http.empty
+            }
+        getString val =
+            case val of
+                Http.Text s -> s
+                Http.Blob b ->  crash "Can't decode notifications"
+        parseError : Http.RawError -> Http.Error
+        parseError err =
+            case err of
+                Http.RawTimeout -> Http.Timeout
+                Http.RawNetworkError -> Http.NetworkError
+    in (Http.send Http.defaultSettings request)
+        |> Task.map (.value >> getString >> toInt >> toMaybe)
+        |> Task.mapError parseError
 
 getById : Int -> Task.Task Http.Error (Maybe (TankRead))
 getById id =
