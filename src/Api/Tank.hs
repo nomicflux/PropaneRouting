@@ -22,6 +22,8 @@ type TankAPI = Get '[JSON] [TankRead]
               :<|> "notifications" :> Get '[JSON] (Maybe ReadingID)
               :<|> "hub" :> Capture "hub" HubID :> Get '[JSON] [TankRead]
               :<|> ReqBody '[JSON] TankWrite :> Post '[JSON] (Maybe TankID)
+              :<|> "register" :> Post '[JSON] Bool
+              :<|> "unregister" :> Post '[JSON] Bool
 
 tankAPI :: Proxy TankAPI
 tankAPI = Proxy
@@ -32,11 +34,35 @@ tankServer = getTanks
             :<|> getTankNotifications
             :<|> getTanksByHub
             :<|> postTank
+            :<|> registerForNotifications
+            :<|> unregisterForNotifications
 
 getTanks :: AppM [TankRead]
 getTanks = do
   con <- getConn
   liftIO $ O.runQuery con tanksQuery
+
+registerForNotifications :: AppM Bool
+registerForNotifications = loop 3
+  where
+    loop :: Int -> AppM Bool
+    loop 0 = return False
+    loop n = do
+      res <- listenToNotifications
+      if res
+        then return True
+        else loop (n-1)
+
+unregisterForNotifications :: AppM Bool
+unregisterForNotifications = loop 3
+  where
+    loop :: Int -> AppM Bool
+    loop 0 = return False
+    loop n = do
+      res <- unlistenToNotifications
+      if res
+        then return True
+        else loop (n - 1)
 
 getTankNotifications :: AppM (Maybe ReadingID)
 getTankNotifications = do

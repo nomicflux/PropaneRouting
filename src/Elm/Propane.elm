@@ -19,11 +19,12 @@ import HubAPI as Hub
 import TankAPI as Tank
 import ReadingAPI as Reading
 import Chart exposing (..)
+import WebSocket as WS
 
 type alias Model = { charts : List Chart
                    , numCharts : Int
                    , currChart : Maybe ChartID
-                   , timeScale : Int
+                   , timeScale : Float
                    , includeNoReadings : Bool
                    , chartsToRead : Set ChartID
                    }
@@ -103,7 +104,7 @@ update msg model =
             let _ = Debug.log (toString err) err
             in ( model, Cmd.none )
         ChangeScale shours ->
-            case String.toInt shours of
+            case String.toFloat shours of
                 Err _ -> ( model, Cmd.none )
                 Ok hours -> ( { model | timeScale = hours
                               , charts = List.map clearChart model.charts
@@ -115,7 +116,7 @@ update msg model =
         ToggleNoReadings ->
             ( { model | includeNoReadings = not model.includeNoReadings }, Cmd.none)
         NewReading midx ->
-            case midx of
+            case midx |> Debug.log "New Reading" of
                 Nothing -> (model, Cmd.none)
                 Just idx ->
                     ( { model | chartsToRead = Set.insert idx model.chartsToRead }, Cmd.none)
@@ -145,10 +146,10 @@ update msg model =
             let
                 setColors = List.map (\c -> let (i, l) = chartToLevel c
                                            in setColor (i, l, c.manual)) model.charts
-                newReading = Tank.getNotifications |> Task.perform Failure NewReading
+                -- newReading = Tank.getNotifications |> Task.perform Failure NewReading
             in
                 ( model
-                , newReading :: setColors |> Cmd.batch )
+                , setColors |> Cmd.batch )
         SlowTick newTime ->
             let getReadings = \toRead -> List.filterMap
                               (\c ->
@@ -156,7 +157,7 @@ update msg model =
                                    then
                                        Reading.getByTank
                                            c.id
-                                           (60 * 60 * model.timeScale |> Just)
+                                           ((60.0 * 60.0 * model.timeScale) |> round |> Just)
                                            c.lastPulled
                                        |> Task.perform Failure (AddReadings c.id)
                                        |> Just
@@ -288,8 +289,10 @@ subscriptions model =
         , markerDblClicked ToggleManual
         -- , addToMarker (\chartval -> AddToChart chartval.id chartval.value)
         -- , updateMarker (\chartval -> UpdateChart chartval.id chartval.value)
-        , Time.every (2 * second) SlowTick
+        , Time.every (1 * second) SlowTick
         , Time.every (500*millisecond) FastTick
+        , WS.listen "ws://localhost:8080" (NewReading << Result.toMaybe << String.toInt)
+        , WS.keepAlive "ws://localhost:8080"
         ]
 
 main : Program Never

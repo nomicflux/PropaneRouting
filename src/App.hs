@@ -1,14 +1,19 @@
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE FlexibleContexts #-}
+
 module App where
 
 import Data.Int (Int64)
-import Control.Monad.IO.Class (liftIO)
+-- import Control.Concurrent.STM (TVar)
+import Control.Monad.IO.Class (liftIO, MonadIO)
+import Control.Monad.Trans.Control (MonadBaseControl)
 import Control.Monad.Trans.Except (ExceptT)
 import Control.Monad.Trans.Reader (ReaderT, ask)
 import Servant (ServantErr)
-import Database.PostgreSQL.Simple (Connection)
+import Database.PostgreSQL.Simple (Connection, execute_)
 import Data.Pool (Pool, withResource)
 import System.Environment (lookupEnv)
-import System.Log.FastLogger (LoggerSet, LogStr, pushLogStrLn, toLogStr)
+import System.Log.FastLogger (LoggerSet, pushLogStrLn, toLogStr)
 import Data.Maybe (fromMaybe)
 import Text.Read (readMaybe)
 
@@ -38,15 +43,36 @@ data Config = Config
               , getLogger :: LoggerSet
               }
 
-type AppM = ReaderT Config (ExceptT ServantErr IO)
+mkConfig :: DBPool -> LoggerSet -> IO Config
+mkConfig pool logger = do
+  return $ Config pool logger
 
-getConnFromPool :: DBPool -> AppM Connection
+type AppM = ReaderT Config (ExceptT ServantErr IO)
+type ConfigT = ReaderT Config
+
+getConnFromPool :: MonadBaseControl IO m => DBPool -> m Connection
 getConnFromPool pool = withResource pool return
 
-getConn :: AppM Connection
+getConn :: MonadBaseControl IO m => ConfigT m Connection
 getConn = ask >>= getConnFromPool . getPool
 
-addToLogger :: String -> AppM ()
+listenToNotifications :: (MonadIO m, MonadBaseControl IO m) => ConfigT m Bool
+listenToNotifications = do
+  con <- getConn
+  res <- liftIO $ execute_ con "LISTEN addedreading"
+  if res == 0
+    then return False
+    else return True
+
+unlistenToNotifications :: (MonadIO m, MonadBaseControl IO m) => ConfigT m Bool
+unlistenToNotifications = do
+  con <- getConn
+  res <- liftIO $ execute_ con "UNLISTEN addedreading"
+  if res == 0
+    then return False
+    else return True
+
+addToLogger :: MonadIO m => String -> ConfigT m ()
 addToLogger msg = ask >>= \cfg -> liftIO $ pushLogStrLn (getLogger cfg) $ toLogStr msg
 
 lookupEnvDefault :: Read a => String -> a -> IO a

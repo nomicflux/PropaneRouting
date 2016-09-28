@@ -24,10 +24,12 @@ import App (Config ( .. )
            , Environment ( .. )
            , LogTo ( .. )
            , lookupEnvDefault
+           , mkConfig
            )
 import Api.Hub
 import Api.Tank
 import Api.Reading
+import Notifications.Sockets (appWithSockets)
 
 data ConnectionInfo = ConnectionInfo
                       { connUser :: String
@@ -60,7 +62,7 @@ openConnection :: IO PGS.Connection
 openConnection = do
   connInfo <- getConnInfo
   con <- PGS.connect (connInfoToPG connInfo)
-  PGS.execute_ con "LISTEN addedreading"
+  _ <- PGS.execute_ con "NOTIFY addedreading"
   return con
 
 makeLogger :: LogTo -> IO FL.LoggerSet
@@ -86,11 +88,12 @@ startApp args = do
     Nothing -> lookupEnvDefault "GM_LOG" STDOut
   pool <- Pool.createPool openConnection PGS.close 1 10 5
   logger <- makeLogger logTo
-  midware <- makeMiddleware logger env
+  loggerMidware <- makeMiddleware logger env
   FL.pushLogStrLn logger $ FL.toLogStr $
     "Listening on port " ++ show port ++ " at level " ++ show env ++ " and logging to "  ++ show logTo ++ (if null args then " with no args " else " with args " ++ unwords args)
   -- specsToDir [hubSpec, tankSpec, readingSpec] "src/Elm"
-  Warp.run port $ midware $ app (Config pool logger)
+  cfg <- mkConfig pool logger
+  Warp.run port $ loggerMidware $ appWithSockets cfg $ app cfg
 
 readerTToExcept :: Config -> AppM :~> ExceptT S.ServantErr IO
 readerTToExcept pool = S.Nat (\r -> runReaderT r pool)
