@@ -14,8 +14,8 @@ import Models.Vendor
 import Queries.Vendor
 
 type VendorAPI = Get '[JSON] [VendorRead]
-                 :<|> Capture "id" VendorID :> Get '[JSON] (Maybe VendorRead)
-                 :<|> Capture "username" Username :> Get '[JSON] (Maybe VendorRead)
+                 :<|> "id" :> Capture "id" VendorID :> Get '[JSON] (Maybe VendorRead)
+                 :<|> "username" :> Capture "username" Username :> Get '[JSON] (Maybe VendorRead)
                  :<|> "verify" :> ReqBody '[JSON] VendorWrite :> Post '[JSON] Bool
                  :<|> ReqBody '[JSON] VendorWrite :> Post '[JSON] (Maybe VendorID)
 

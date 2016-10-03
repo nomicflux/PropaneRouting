@@ -14,7 +14,7 @@ import qualified Servant as S
 import Servant.API.BasicAuth (BasicAuth)
 import qualified Servant.API.BasicAuth as SBA
 import qualified Opaleye as O
--- import Control.Monad.IO.Class (liftIO)
+import Control.Monad.IO.Class (liftIO)
 import Control.Monad.Trans.Reader (runReaderT)
 import Control.Monad.Trans.Except (ExceptT)
 import qualified Database.PostgreSQL.Simple as PGS
@@ -22,7 +22,7 @@ import qualified Data.Pool as Pool
 import qualified System.Log.FastLogger as FL
 import Data.Default.Class (def, Default)
 import Data.Maybe (listToMaybe)
--- import qualified Data.ByteString as BS
+import qualified Data.ByteString.Char8 as BS
 
 import App (Config ( .. )
            , AppM
@@ -126,14 +126,17 @@ type FullAPI = "auth" :> BasicAuth "vendor" VendorRead :> AuthAPI
 authCheck :: Config -> BasicAuthCheck VendorRead
 authCheck cfg =
   let
+    logger = getLogger cfg
+    logMsg msg = FL.pushLogStrLn logger . FL.toLogStr $ msg
     check (SBA.BasicAuthData uname pwd) = do
       con <- Pool.withResource (getPool cfg) return
-      dbVendor <- O.runQuery con (vendorByUsernameQuery $ show uname)
+      logMsg ("Uname: " ++ show uname ++ " & Password: " ++ show pwd)
+      dbVendor <- liftIO $ listToMaybe <$> O.runQuery con (vendorByUsernameQuery $ BS.unpack uname)
       case dbVendor of
-        [] -> return S.NoSuchUser
-        v : _ -> if authPassword v pwd
-          then return $ S.Authorized v
-          else return S.BadPassword
+        Nothing -> logMsg ("NoSuchUser: " ++ show uname) >> return S.NoSuchUser
+        Just v -> if authPassword v pwd
+          then logMsg ("Authorized: " ++ show uname ++ ":" ++ show pwd) >> return (S.Authorized v)
+          else logMsg ("BadPassword: " ++ show pwd) >> return S.BadPassword
   in
     S.BasicAuthCheck check
 
