@@ -9,9 +9,12 @@ module Lib
 import qualified Network.Wai as Wai
 import qualified Network.Wai.Handler.Warp as Warp
 import qualified Network.Wai.Middleware.RequestLogger as MidRL
-import Servant ((:<|>)( .. ), (:>), (:~>))
+import Servant ((:<|>)( .. ), (:>), (:~>), Context( .. ), BasicAuthCheck)
 import qualified Servant as S
--- import qualified Servant.API.BasicAuth as S
+import Servant.API.BasicAuth (BasicAuth)
+import qualified Servant.API.BasicAuth as SBA
+import qualified Opaleye as O
+-- import Control.Monad.IO.Class (liftIO)
 import Control.Monad.Trans.Reader (runReaderT)
 import Control.Monad.Trans.Except (ExceptT)
 import qualified Database.PostgreSQL.Simple as PGS
@@ -19,6 +22,7 @@ import qualified Data.Pool as Pool
 import qualified System.Log.FastLogger as FL
 import Data.Default.Class (def, Default)
 import Data.Maybe (listToMaybe)
+-- import qualified Data.ByteString as BS
 
 import App (Config ( .. )
            , AppM
@@ -31,6 +35,8 @@ import Api.Hub
 import Api.Tank
 import Api.Reading
 import Api.Vendor
+import Models.Vendor
+import Queries.Vendor
 import Notifications.Sockets (appWithSockets)
 
 data ConnectionInfo = ConnectionInfo
@@ -114,15 +120,32 @@ server' = hubServer
     :<|> tankServer
     :<|> readingServer
 
-type FullAPI = "auth" :> AuthAPI
+type FullAPI = "auth" :> BasicAuth "vendor" VendorRead :> AuthAPI
                :<|> UnAuthAPI
+
+authCheck :: Config -> BasicAuthCheck VendorRead
+authCheck cfg =
+  let
+    check (SBA.BasicAuthData uname pwd) = do
+      con <- Pool.withResource (getPool cfg) return
+      dbVendor <- O.runQuery con (vendorByUsernameQuery $ show uname)
+      case dbVendor of
+        [] -> return S.NoSuchUser
+        v : _ -> if authPassword v pwd
+          then return $ S.Authorized v
+          else return S.BadPassword
+  in
+    S.BasicAuthCheck check
+
+authContext :: Config -> Context (BasicAuthCheck VendorRead ': '[])
+authContext cfg = authCheck cfg :. EmptyContext
 
 fullApi :: S.Proxy FullAPI
 fullApi = S.Proxy
 
 fullApp :: Config -> Wai.Application
-fullApp cfg = S.serve fullApi $
-              (S.enter (readerTToExcept cfg) server'
-               :<|> S.serveDirectory "auth")
+fullApp cfg = S.serveWithContext fullApi (authContext cfg) $
+              (\_ -> S.enter (readerTToExcept cfg) server'
+                :<|> S.serveDirectory "auth")
               :<|> (S.enter (readerTToExcept cfg) vendorServer
                     :<|> S.serveDirectory "public")

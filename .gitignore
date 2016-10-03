@@ -1,4 +1,5 @@
 src/Elm/elm-stuff
+*elm.js
 dist/
 .cabal/
 *~

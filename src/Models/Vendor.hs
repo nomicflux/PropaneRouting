@@ -11,7 +11,7 @@ import Control.Monad (mzero)
 import Crypto.PasswordStore
 import Data.Aeson
 import Data.Profunctor.Product.TH (makeAdaptorAndInstance)
--- import Data.ByteString (ByteString)
+import Data.ByteString (ByteString)
 import qualified Data.ByteString.Char8 as BS
 import GHC.Generics (Generic)
 
@@ -101,3 +101,7 @@ authVendor :: Maybe VendorRead -> VendorWrite -> Bool
 authVendor Nothing _ = False
 authVendor (Just dbVendor) attempt = verifyPassword (BS.pack . vendorPassword $ attempt)
                                                     (vendorPassword dbVendor)
+
+authPassword :: VendorRead -> ByteString -> Bool
+authPassword dbVendor pwd = verifyPassword pwd
+                                           (vendorPassword dbVendor)
