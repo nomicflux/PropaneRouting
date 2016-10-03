@@ -33,12 +33,12 @@ SET search_path = public, pg_catalog;
 -- Name: notify_reading_added(); Type: FUNCTION; Schema: public; Owner: gasmasters
 --
 
-CREATE FUNCTION notify_reading_added() RETURNS trigger 
+CREATE FUNCTION notify_reading_added() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
 BEGIN
-    PERFORM pg_notify('addedreading', NEW.tank);
-    RETURN NEW;
+PERFORM pg_notify('addedreading', CAST(NEW.tank AS TEXT));
+RETURN NEW;
 END;
 $$;
 
@@ -57,7 +57,8 @@ CREATE TABLE hubs (
     id integer NOT NULL,
     name character varying(255) NOT NULL,
     lat double precision,
-    lng double precision
+    lng double precision,
+    vendor_id integer NOT NULL
 );
 
 
@@ -159,6 +160,45 @@ ALTER SEQUENCE tanks_id_seq OWNED BY tanks.id;
 
 
 --
+-- Name: vendors; Type: TABLE; Schema: public; Owner: gasmasters
+--
+
+CREATE TABLE vendors (
+    id integer NOT NULL,
+    name character varying(255),
+    street character varying(255),
+    city character varying(255),
+    state character varying(2),
+    zip character varying(10),
+    username character varying(16),
+    password bytea
+);
+
+
+ALTER TABLE vendors OWNER TO gasmasters;
+
+--
+-- Name: vendors_id_seq; Type: SEQUENCE; Schema: public; Owner: gasmasters
+--
+
+CREATE SEQUENCE vendors_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE vendors_id_seq OWNER TO gasmasters;
+
+--
+-- Name: vendors_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: gasmasters
+--
+
+ALTER SEQUENCE vendors_id_seq OWNED BY vendors.id;
+
+
+--
 -- Name: id; Type: DEFAULT; Schema: public; Owner: gasmasters
 --
 
@@ -177,6 +217,13 @@ ALTER TABLE ONLY readings ALTER COLUMN id SET DEFAULT nextval('readings_id_seq':
 --
 
 ALTER TABLE ONLY tanks ALTER COLUMN id SET DEFAULT nextval('tanks_id_seq'::regclass);
+
+
+--
+-- Name: id; Type: DEFAULT; Schema: public; Owner: gasmasters
+--
+
+ALTER TABLE ONLY vendors ALTER COLUMN id SET DEFAULT nextval('vendors_id_seq'::regclass);
 
 
 --
@@ -204,12 +251,34 @@ ALTER TABLE ONLY tanks
 
 
 --
+-- Name: unique_vendor_username; Type: CONSTRAINT; Schema: public; Owner: gasmasters
+--
+
+ALTER TABLE ONLY vendors
+    ADD CONSTRAINT unique_vendor_username UNIQUE (username);
+
+
+--
+-- Name: vendors_pkey; Type: CONSTRAINT; Schema: public; Owner: gasmasters
+--
+
+ALTER TABLE ONLY vendors
+    ADD CONSTRAINT vendors_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: updated_readings_trigger; Type: TRIGGER; Schema: public; Owner: gasmasters
 --
 
 CREATE TRIGGER updated_readings_trigger AFTER INSERT ON readings FOR EACH ROW EXECUTE PROCEDURE notify_reading_added();
 
-NOTIFY addedreading;
+
+--
+-- Name: fk_hub_vendor; Type: FK CONSTRAINT; Schema: public; Owner: gasmasters
+--
+
+ALTER TABLE ONLY hubs
+    ADD CONSTRAINT fk_hub_vendor FOREIGN KEY (vendor_id) REFERENCES vendors(id);
 
 
 --
