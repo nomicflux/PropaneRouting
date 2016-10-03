@@ -12,18 +12,21 @@ import Control.Monad.Trans.Reader (ReaderT, ask)
 import Servant (ServantErr)
 import Database.PostgreSQL.Simple (Connection, execute_)
 import Data.Pool (Pool, withResource)
+import Data.ByteString (ByteString)
 import System.Environment (lookupEnv)
 import System.Log.FastLogger (LoggerSet, pushLogStrLn, toLogStr)
 import Data.Maybe (fromMaybe)
 import Text.Read (readMaybe)
 
+type VendorID = Int64
 type HubID = Int64
-
 type TankID = Int64
 type ReadingID = Int64
 type Reading = Int
 type Lat = Double
 type Lng = Double
+type Username = String
+type Password = ByteString
 data Position = Position Lat Lng
 
 type DBPool = Pool Connection

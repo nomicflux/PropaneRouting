@@ -11,6 +11,7 @@ import qualified Network.Wai.Handler.Warp as Warp
 import qualified Network.Wai.Middleware.RequestLogger as MidRL
 import Servant ((:<|>)( .. ), (:>), (:~>))
 import qualified Servant as S
+-- import qualified Servant.API.BasicAuth as S
 import Control.Monad.Trans.Reader (runReaderT)
 import Control.Monad.Trans.Except (ExceptT)
 import qualified Database.PostgreSQL.Simple as PGS
@@ -29,6 +30,7 @@ import App (Config ( .. )
 import Api.Hub
 import Api.Tank
 import Api.Reading
+import Api.Vendor
 import Notifications.Sockets (appWithSockets)
 
 data ConnectionInfo = ConnectionInfo
@@ -93,7 +95,7 @@ startApp args = do
     "Listening on port " ++ show port ++ " at level " ++ show env ++ " and logging to "  ++ show logTo ++ (if null args then " with no args " else " with args " ++ unwords args)
   -- specsToDir [hubSpec, tankSpec, readingSpec] "src/Elm"
   cfg <- mkConfig pool logger
-  Warp.run port $ loggerMidware $ appWithSockets cfg $ app cfg
+  Warp.run port $ loggerMidware $ appWithSockets cfg $ fullApp cfg
 
 readerTToExcept :: Config -> AppM :~> ExceptT S.ServantErr IO
 readerTToExcept pool = S.Nat (\r -> runReaderT r pool)
@@ -101,16 +103,24 @@ readerTToExcept pool = S.Nat (\r -> runReaderT r pool)
 type API' = "hubs" :> HubAPI
       :<|> "tanks" :> TankAPI
       :<|> "readings" :> ReadingAPI
+      :<|> "vendors" :> VendorAPI
 
-type API = API' :<|> S.Raw
+type AuthAPI = API' :<|> S.Raw
 
-server :: S.ServerT API' AppM
-server = hubServer
+server' :: S.ServerT API' AppM
+server' = hubServer
     :<|> tankServer
     :<|> readingServer
+    :<|> vendorServer
 
-app :: Config -> Wai.Application
-app pool = S.serve api $ (S.enter (readerTToExcept pool) server) :<|> S.serveDirectory "public"
+type FullAPI = "auth" :> AuthAPI
+               :<|> S.Raw
 
-api :: S.Proxy API
-api = S.Proxy
+fullApi :: S.Proxy FullAPI
+fullApi = S.Proxy
+
+fullApp :: Config -> Wai.Application
+fullApp cfg = S.serve fullApi $
+              (S.enter (readerTToExcept cfg) server'
+               :<|> S.serveDirectory "auth")
+              :<|> S.serveDirectory "public"

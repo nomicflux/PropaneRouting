@@ -20,16 +20,20 @@ library
                      , Api.Hub
                      , Api.Tank
                      , Api.Reading
+                     , Api.Vendor
                      , Models.Hub
                      , Models.Tank
                      , Models.Reading
+                     , Models.Vendor
                      , Queries.Hub
                      , Queries.Tank
                      , Queries.Reading
+                     , Queries.Vendor
                      , Notifications.Sockets
   build-depends:       base >= 4.7 && < 5
                      , aeson
-                     , servant-server >= 0.9
+                     , servant == 0.9
+                     , servant-server == 0.9
                      , wai
                      , warp
                      , datetime
