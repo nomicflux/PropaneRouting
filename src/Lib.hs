@@ -130,13 +130,12 @@ authCheck cfg =
     logMsg msg = FL.pushLogStrLn logger . FL.toLogStr $ msg
     check (SBA.BasicAuthData uname pwd) = do
       con <- Pool.withResource (getPool cfg) return
-      logMsg ("Uname: " ++ show uname ++ " & Password: " ++ show pwd)
-      dbVendor <- liftIO $ listToMaybe <$> O.runQuery con (vendorByUsernameQuery $ BS.unpack uname)
+      dbVendor <- liftIO $ listToMaybe <$> O.runQuery con (vendorByUsernameQuery $ show uname)
       case dbVendor of
         Nothing -> logMsg ("NoSuchUser: " ++ show uname) >> return S.NoSuchUser
         Just v -> if authPassword v pwd
-          then logMsg ("Authorized: " ++ show uname ++ ":" ++ show pwd) >> return (S.Authorized v)
-          else logMsg ("BadPassword: " ++ show pwd) >> return S.BadPassword
+          then return (S.Authorized v)
+          else logMsg ("BadPassword: " ++ show uname) >> return S.BadPassword
   in
     S.BasicAuthCheck check
 
