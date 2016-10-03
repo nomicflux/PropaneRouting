@@ -103,18 +103,19 @@ readerTToExcept pool = S.Nat (\r -> runReaderT r pool)
 type API' = "hubs" :> HubAPI
       :<|> "tanks" :> TankAPI
       :<|> "readings" :> ReadingAPI
-      :<|> "vendors" :> VendorAPI
 
 type AuthAPI = API' :<|> S.Raw
+
+type UnAuthAPI = "vendors" :> VendorAPI
+                 :<|> S.Raw
 
 server' :: S.ServerT API' AppM
 server' = hubServer
     :<|> tankServer
     :<|> readingServer
-    :<|> vendorServer
 
 type FullAPI = "auth" :> AuthAPI
-               :<|> S.Raw
+               :<|> UnAuthAPI
 
 fullApi :: S.Proxy FullAPI
 fullApi = S.Proxy
@@ -123,4 +124,5 @@ fullApp :: Config -> Wai.Application
 fullApp cfg = S.serve fullApi $
               (S.enter (readerTToExcept cfg) server'
                :<|> S.serveDirectory "auth")
-              :<|> S.serveDirectory "public"
+              :<|> (S.enter (readerTToExcept cfg) vendorServer
+                    :<|> S.serveDirectory "public")

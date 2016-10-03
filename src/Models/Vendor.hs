@@ -11,7 +11,7 @@ import Control.Monad (mzero)
 import Crypto.PasswordStore
 import Data.Aeson
 import Data.Profunctor.Product.TH (makeAdaptorAndInstance)
-import Data.ByteString (ByteString)
+-- import Data.ByteString (ByteString)
 import qualified Data.ByteString.Char8 as BS
 import GHC.Generics (Generic)
 
