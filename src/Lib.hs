@@ -28,6 +28,7 @@ import App (Config ( .. )
            , AppM
            , Environment ( .. )
            , LogTo ( .. )
+           , VendorID
            , lookupEnvDefault
            , mkConfig
            )
@@ -115,10 +116,10 @@ type AuthAPI = API' :<|> S.Raw
 type UnAuthAPI = "vendors" :> VendorAPI
                  :<|> S.Raw
 
-server' :: S.ServerT API' AppM
-server' = hubServer
-    :<|> tankServer
-    :<|> readingServer
+server' :: VendorID -> S.ServerT API' AppM
+server' v = hubServer v
+    :<|> tankServer v
+    :<|> readingServer v
 
 type FullAPI = "auth" :> BasicAuth "vendor" VendorRead :> AuthAPI
                :<|> UnAuthAPI
@@ -147,7 +148,7 @@ fullApi = S.Proxy
 
 fullApp :: Config -> Wai.Application
 fullApp cfg = S.serveWithContext fullApi (authContext cfg) $
-              (\_ -> S.enter (readerTToExcept cfg) server'
+              (\v -> S.enter (readerTToExcept cfg) (server' $ vendorId v)
                 :<|> S.serveDirectory "auth")
               :<|> (S.enter (readerTToExcept cfg) vendorServer
                     :<|> S.serveDirectory "public")

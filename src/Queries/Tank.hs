@@ -8,30 +8,36 @@ import Control.Arrow (returnA)
 
 import App
 import Models.Tank
+import Models.Hub
+import Queries.Hub
 
-tanksQuery :: O.Query TankColRead
-tanksQuery = O.queryTable tankTable
+tanksQuery :: VendorID -> O.Query TankColRead
+tanksQuery v = proc () -> do
+  tank <- O.queryTable tankTable -< ()
+  hub <- hubsQuery v -< ()
+  O.restrict -< tankHub tank .== hubId hub
+  returnA -< tank
 
-tankByIdQuery :: TankID -> O.Query TankColRead
-tankByIdQuery tankID = proc () -> do
-  tank <- tanksQuery -< ()
+tankByIdQuery :: VendorID -> TankID -> O.Query TankColRead
+tankByIdQuery v tankID = proc () -> do
+  tank <- tanksQuery v -< ()
   O.restrict -< tankId tank .== O.pgInt8 tankID
   returnA -< tank
 
-tanksByHubQuery :: HubID -> O.Query TankColRead
-tanksByHubQuery hub = proc () -> do
-  tank <- tanksQuery -< ()
+tanksByHubQuery :: VendorID -> HubID -> O.Query TankColRead
+tanksByHubQuery v hub = proc () -> do
+  tank <- tanksQuery v -< ()
   O.restrict -< tankHub tank .== O.pgInt8 hub
   returnA -< tank
 
-yellowOfTank :: O.QueryArr (O.Column O.PGInt8) (O.Column O.PGInt4)
-yellowOfTank = proc (tankID) -> do
-  tank <- tanksQuery -< ()
-  O.restrict -< tankId tank .== tankID
-  returnA -< tankYellow tank
+-- yellowOfTank :: O.QueryArr (O.Column O.PGInt8) (O.Column O.PGInt4)
+-- yellowOfTank = proc (tankID) -> do
+--   tank <- tanksQuery -< ()
+--   O.restrict -< tankId tank .== tankID
+--   returnA -< tankYellow tank
 
-redOfTank :: O.QueryArr (O.Column O.PGInt8) (O.Column O.PGInt4)
-redOfTank = proc (tankID) -> do
-  tank <- tanksQuery -< ()
-  O.restrict -< tankId tank .== tankID
-  returnA -< tankRed tank
+-- redOfTank :: O.QueryArr (O.Column O.PGInt8) (O.Column O.PGInt4)
+-- redOfTank = proc (tankID) -> do
+--   tank <- tanksQuery -< ()
+--   O.restrict -< tankId tank .== tankID
+--   returnA -< tankRed tank

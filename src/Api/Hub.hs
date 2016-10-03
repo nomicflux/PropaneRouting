@@ -20,23 +20,23 @@ type HubAPI = Get '[JSON] [HubRead]
 hubAPI :: Proxy HubAPI
 hubAPI = Proxy
 
-hubServer :: ServerT HubAPI AppM
-hubServer = getHubs
-            :<|> getHubById
-            :<|> postHub
+hubServer :: VendorID -> ServerT HubAPI AppM
+hubServer v = getHubs v
+              :<|> getHubById v
+              :<|> postHub v
 
-getHubs :: AppM [HubRead]
-getHubs = do
+getHubs :: VendorID -> AppM [HubRead]
+getHubs v = do
   con <- getConn
-  liftIO $ O.runQuery con hubsQuery
+  liftIO $ O.runQuery con (hubsQuery v)
 
-getHubById :: HubID -> AppM (Maybe HubRead)
-getHubById hubID = do
+getHubById :: VendorID -> HubID -> AppM (Maybe HubRead)
+getHubById v hubID = do
   con <- getConn
-  liftIO $ listToMaybe <$> O.runQuery con (hubByIdQuery hubID)
+  liftIO $ listToMaybe <$> O.runQuery con (hubByIdQuery v hubID)
 
-postHub :: HubWrite -> AppM (Maybe HubID)
-postHub hub = do
+postHub :: VendorID -> HubWrite -> AppM (Maybe HubID)
+postHub v hub = do
   con <- getConn
   liftIO $ listToMaybe <$>
-    O.runInsertManyReturning con hubTable [hubToPG hub] hubId
+    O.runInsertManyReturning con hubTable [hubToPG v hub] hubId

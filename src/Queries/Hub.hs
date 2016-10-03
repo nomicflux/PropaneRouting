@@ -9,11 +9,14 @@ import Control.Arrow (returnA)
 import App
 import Models.Hub
 
-hubsQuery :: O.Query HubColRead
-hubsQuery = O.queryTable hubTable
+hubsQuery :: VendorID -> O.Query HubColRead
+hubsQuery v = proc () -> do
+  hub <- O.queryTable hubTable -< ()
+  O.restrict -< hubVendor hub .== O.pgInt8 v
+  returnA -< hub
 
-hubByIdQuery :: HubID -> O.Query HubColRead
-hubByIdQuery hubID = proc () -> do
-  hub <- hubsQuery -< ()
+hubByIdQuery :: VendorID -> HubID -> O.Query HubColRead
+hubByIdQuery v hubID = proc () -> do
+  hub <- hubsQuery v -< ()
   O.restrict -< hubId hub .== O.pgInt8 hubID
   returnA -< hub
