@@ -1,7 +1,11 @@
 <HTML>
   <HEAD>
+    <script src="elm.js"></script>
   </HEAD>
   <BODY>
-    <p>Under development</p>
+    <div id="elm-app"></div>
+    <script>
+      var app = Elm.Login.embed(document.getElementById("elm-app"));
+    </script>
   </BODY>
 </HTML>

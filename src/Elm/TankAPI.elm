@@ -55,7 +55,7 @@ get =
       , headers =
           [("Content-Type", "application/json")]
       , url =
-          "/tanks"
+          "/auth/tanks"
       , body =
           Http.empty
       }
@@ -70,7 +70,7 @@ getNotifications =
         request =
             { verb = "GET"
             , headers = [("Content-Type", "application/octet-stream")]
-            , url = "/tanks/notifications"
+            , url = "/auth/tanks/notifications"
             , body = Http.empty
             }
         getString val =
@@ -95,7 +95,7 @@ getById id =
       , headers =
           [("Content-Type", "application/json")]
       , url =
-          "/tanks/" ++ (id |> toString |> Http.uriEncode)
+          "/auth/tanks/" ++ (id |> toString |> Http.uriEncode)
       , body =
           Http.empty
       }
@@ -113,7 +113,7 @@ getByHub hub =
       , headers =
           [("Content-Type", "application/json")]
       , url =
-          "/tanks/" ++ "hub"
+          "/auth/tanks/" ++ "hub"
           ++ "/" ++ (hub |> toString |> Http.uriEncode)
       , body =
           Http.empty
@@ -165,7 +165,7 @@ post body =
       , headers =
           [("Content-Type", "application/json")]
       , url =
-          "/tanks"
+          "/auth/tanks"
       , body =
           Http.string (Json.Encode.encode 0 (encodeTankWrite body))
       }

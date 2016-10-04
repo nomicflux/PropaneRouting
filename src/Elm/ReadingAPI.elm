@@ -47,7 +47,7 @@ get =
       , headers =
           [("Content-Type", "application/json")]
       , url =
-          "/readings"
+          "/auth/readings"
       , body =
           Http.empty
       }
@@ -65,7 +65,7 @@ getById id =
       , headers =
           [("Content-Type", "application/json")]
       , url =
-          "/readings/" ++ (id |> toString |> Http.uriEncode)
+          "/auth/readings/" ++ (id |> toString |> Http.uriEncode)
       , body =
           Http.empty
       }
@@ -89,7 +89,7 @@ getByTank tank mseconds mreading =
       , headers =
           [("Content-Type", "application/json")]
       , url =
-          "/readings/" ++ "tank"
+          "/auth/readings/" ++ "tank"
           ++ "/" ++ (tank |> toString |> Http.uriEncode) ++ (queries)
       , body =
           Http.empty
@@ -108,46 +108,8 @@ getByHub hub =
       , headers =
           [("Content-Type", "application/json")]
       , url =
-          "/readings/" ++ "hub"
+          "/auth/readings/" ++ "hub"
           ++ "/" ++ (hub |> toString |> Http.uriEncode)
-      , body =
-          Http.empty
-      }
-  in
-    Http.fromJson
-      (Json.Decode.list decodeReadingRead)
-      (Http.send Http.defaultSettings request)
-
-getHubYellow : Int -> Task.Task Http.Error (List (ReadingRead))
-getHubYellow yellow =
-  let
-    request =
-      { verb =
-          "GET"
-      , headers =
-          [("Content-Type", "application/json")]
-      , url =
-          "/readings/" ++ "yellow"
-          ++ "/" ++ (yellow |> toString |> Http.uriEncode)
-      , body =
-          Http.empty
-      }
-  in
-    Http.fromJson
-      (Json.Decode.list decodeReadingRead)
-      (Http.send Http.defaultSettings request)
-
-getHubRed : Int -> Task.Task Http.Error (List (ReadingRead))
-getHubRed red =
-  let
-    request =
-      { verb =
-          "GET"
-      , headers =
-          [("Content-Type", "application/json")]
-      , url =
-          "/readings/" ++ "red"
-          ++ "/" ++ (red |> toString |> Http.uriEncode)
       , body =
           Http.empty
       }
@@ -192,7 +154,7 @@ post body =
       , headers =
           [("Content-Type", "application/json")]
       , url =
-          "/readings"
+          "/auth/readings"
       , body =
           Http.string (Json.Encode.encode 0 (encodeReadingWrite body))
       }

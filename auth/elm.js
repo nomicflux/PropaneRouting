@@ -10089,7 +10089,7 @@ var _user$project$ReadingAPI$post = function (body) {
 			[
 				{ctor: '_Tuple2', _0: 'Content-Type', _1: 'application/json'}
 			]),
-		url: '/readings',
+		url: '/auth/readings',
 		body: _evancz$elm_http$Http$string(
 			A2(
 				_elm_lang$core$Json_Encode$encode,
@@ -10180,7 +10180,7 @@ var _user$project$ReadingAPI$get = function () {
 			[
 				{ctor: '_Tuple2', _0: 'Content-Type', _1: 'application/json'}
 			]),
-		url: '/readings',
+		url: '/auth/readings',
 		body: _evancz$elm_http$Http$empty
 	};
 	return A2(
@@ -10197,7 +10197,7 @@ var _user$project$ReadingAPI$getById = function (id) {
 			]),
 		url: A2(
 			_elm_lang$core$Basics_ops['++'],
-			'/readings/',
+			'/auth/readings/',
 			_evancz$elm_http$Http$uriEncode(
 				_elm_lang$core$Basics$toString(id))),
 		body: _evancz$elm_http$Http$empty
@@ -10248,7 +10248,7 @@ var _user$project$ReadingAPI$getByTank = F3(
 				]),
 			url: A2(
 				_elm_lang$core$Basics_ops['++'],
-				'/readings/',
+				'/auth/readings/',
 				A2(
 					_elm_lang$core$Basics_ops['++'],
 					'tank',
@@ -10276,7 +10276,7 @@ var _user$project$ReadingAPI$getByHub = function (hub) {
 			]),
 		url: A2(
 			_elm_lang$core$Basics_ops['++'],
-			'/readings/',
+			'/auth/readings/',
 			A2(
 				_elm_lang$core$Basics_ops['++'],
 				'hub',
@@ -10285,56 +10285,6 @@ var _user$project$ReadingAPI$getByHub = function (hub) {
 					'/',
 					_evancz$elm_http$Http$uriEncode(
 						_elm_lang$core$Basics$toString(hub))))),
-		body: _evancz$elm_http$Http$empty
-	};
-	return A2(
-		_evancz$elm_http$Http$fromJson,
-		_elm_lang$core$Json_Decode$list(_user$project$ReadingAPI$decodeReadingRead),
-		A2(_evancz$elm_http$Http$send, _evancz$elm_http$Http$defaultSettings, request));
-};
-var _user$project$ReadingAPI$getHubYellow = function (yellow) {
-	var request = {
-		verb: 'GET',
-		headers: _elm_lang$core$Native_List.fromArray(
-			[
-				{ctor: '_Tuple2', _0: 'Content-Type', _1: 'application/json'}
-			]),
-		url: A2(
-			_elm_lang$core$Basics_ops['++'],
-			'/readings/',
-			A2(
-				_elm_lang$core$Basics_ops['++'],
-				'yellow',
-				A2(
-					_elm_lang$core$Basics_ops['++'],
-					'/',
-					_evancz$elm_http$Http$uriEncode(
-						_elm_lang$core$Basics$toString(yellow))))),
-		body: _evancz$elm_http$Http$empty
-	};
-	return A2(
-		_evancz$elm_http$Http$fromJson,
-		_elm_lang$core$Json_Decode$list(_user$project$ReadingAPI$decodeReadingRead),
-		A2(_evancz$elm_http$Http$send, _evancz$elm_http$Http$defaultSettings, request));
-};
-var _user$project$ReadingAPI$getHubRed = function (red) {
-	var request = {
-		verb: 'GET',
-		headers: _elm_lang$core$Native_List.fromArray(
-			[
-				{ctor: '_Tuple2', _0: 'Content-Type', _1: 'application/json'}
-			]),
-		url: A2(
-			_elm_lang$core$Basics_ops['++'],
-			'/readings/',
-			A2(
-				_elm_lang$core$Basics_ops['++'],
-				'red',
-				A2(
-					_elm_lang$core$Basics_ops['++'],
-					'/',
-					_evancz$elm_http$Http$uriEncode(
-						_elm_lang$core$Basics$toString(red))))),
 		body: _evancz$elm_http$Http$empty
 	};
 	return A2(
@@ -10651,7 +10601,7 @@ var _user$project$HubAPI$post = function (body) {
 			[
 				{ctor: '_Tuple2', _0: 'Content-Type', _1: 'application/json'}
 			]),
-		url: '/hubs',
+		url: '/auth/hubs',
 		body: _evancz$elm_http$Http$string(
 			A2(
 				_elm_lang$core$Json_Encode$encode,
@@ -10713,7 +10663,7 @@ var _user$project$HubAPI$get = function () {
 			[
 				{ctor: '_Tuple2', _0: 'Content-Type', _1: 'application/json'}
 			]),
-		url: '/hubs',
+		url: '/auth/hubs',
 		body: _evancz$elm_http$Http$empty
 	};
 	return A2(
@@ -10730,7 +10680,7 @@ var _user$project$HubAPI$getById = function (id) {
 			]),
 		url: A2(
 			_elm_lang$core$Basics_ops['++'],
-			'/hubs/',
+			'/auth/hubs/',
 			_evancz$elm_http$Http$uriEncode(
 				_elm_lang$core$Basics$toString(id))),
 		body: _evancz$elm_http$Http$empty
@@ -10818,7 +10768,7 @@ var _user$project$TankAPI$post = function (body) {
 			[
 				{ctor: '_Tuple2', _0: 'Content-Type', _1: 'application/json'}
 			]),
-		url: '/tanks',
+		url: '/auth/tanks',
 		body: _evancz$elm_http$Http$string(
 			A2(
 				_elm_lang$core$Json_Encode$encode,
@@ -10859,7 +10809,7 @@ var _user$project$TankAPI$getNotifications = function () {
 			[
 				{ctor: '_Tuple2', _0: 'Content-Type', _1: 'application/octet-stream'}
 			]),
-		url: '/tanks/notifications',
+		url: '/auth/tanks/notifications',
 		body: _evancz$elm_http$Http$empty
 	};
 	return A2(
@@ -10951,7 +10901,7 @@ var _user$project$TankAPI$get = function () {
 			[
 				{ctor: '_Tuple2', _0: 'Content-Type', _1: 'application/json'}
 			]),
-		url: '/tanks',
+		url: '/auth/tanks',
 		body: _evancz$elm_http$Http$empty
 	};
 	return A2(
@@ -10968,7 +10918,7 @@ var _user$project$TankAPI$getById = function (id) {
 			]),
 		url: A2(
 			_elm_lang$core$Basics_ops['++'],
-			'/tanks/',
+			'/auth/tanks/',
 			_evancz$elm_http$Http$uriEncode(
 				_elm_lang$core$Basics$toString(id))),
 		body: _evancz$elm_http$Http$empty
@@ -10987,7 +10937,7 @@ var _user$project$TankAPI$getByHub = function (hub) {
 			]),
 		url: A2(
 			_elm_lang$core$Basics_ops['++'],
-			'/tanks/',
+			'/auth/tanks/',
 			A2(
 				_elm_lang$core$Basics_ops['++'],
 				'hub',

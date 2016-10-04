@@ -4,6 +4,7 @@ from random import randint, random
 from datetime import datetime
 from time import sleep
 from multiprocessing import Pool
+from requests.auth import HTTPBasicAuth
 
 tank_ids = [9,10,11,12,13]
 
@@ -20,6 +21,8 @@ upper = {9: 16,
     13: 4}
 
 skip = {9: 7, 10: 6, 11: 7, 12: 4, 13: 6}
+
+url = "http://127.0.0.1:8080/auth/readings"
 
 def clamp(val, mn, mx):
   if val > mx:
@@ -46,8 +49,8 @@ def synth_tank(id_):
       obj['value'] = reading
       obj['sensorsent'] = datetime.strftime(datetime.utcnow(),
         "%Y-%m-%dT%H:%M:%S.%fZ")
-      print(obj['sensorsent'], reading)
-      req.post("http://127.0.0.1:8080/readings", json=obj)
+      print(obj['sensorsent'], reading, url)
+      req.post(url, json=obj, auth=HTTPBasicAuth('vendor', 'password'))
     sleep(0.5)
   print("{} finished".format(id_))
 
