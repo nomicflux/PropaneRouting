@@ -14,26 +14,28 @@ import App
 import Models.Reading
 import Queries.Reading
 
-type ReadingAPI =
+type ReadingAPIGet =
   Get '[JSON] [ReadingRead]
   :<|> Capture "id" ReadingID :> Get '[JSON] (Maybe ReadingRead)
   :<|> "tank" :> Capture "tank" TankID :> QueryParam "seconds" Integer :> QueryParam "lastreading" ReadingID :> Get '[JSON] [ReadingRead]
   :<|> "hub" :> Capture "hub" HubID :> Get '[JSON] [ReadingRead]
-  -- :<|> "yellow" :> Capture "yellow" HubID :> Get '[JSON] [ReadingRead]
-  -- :<|> "red" :> Capture "red" HubID :> Get '[JSON] [ReadingRead]
-  :<|> ReqBody '[JSON] ReadingWrite :> Post '[JSON] (Maybe ReadingID)
 
-readingAPI :: Proxy ReadingAPI
-readingAPI = Proxy
+type ReadingAPIPost = ReqBody '[JSON] ReadingWrite :> Post '[JSON] (Maybe ReadingID)
 
-readingServer :: VendorID -> ServerT ReadingAPI AppM
-readingServer v = getReadings v
+readingAPIGet :: Proxy ReadingAPIGet
+readingAPIGet = Proxy
+
+readingAPIPost :: Proxy ReadingAPIPost
+readingAPIPost = Proxy
+
+readingGetServer :: VendorID -> ServerT ReadingAPIGet AppM
+readingGetServer v = getReadings v
             :<|> getReadingById v
             :<|> getReadingsByTank v
             :<|> getReadingsByHub v
-            -- :<|> getYellowReadingsByHub
-            -- :<|> getRedReadingsByHub
-            :<|> postReading v
+
+readingPostServer :: ServerT ReadingAPIPost AppM
+readingPostServer =  postReading
 
 getReadings :: VendorID -> AppM [ReadingRead]
 getReadings v = do
@@ -65,18 +67,8 @@ getReadingsByHub v hubID = do
   con <- getConn
   liftIO $ O.runQuery con (readingsByHubQuery v hubID)
 
--- getYellowReadingsByHub :: VendorID -> HubID -> AppM [ReadingRead]
--- getYellowReadingsByHub v hubID = do
---   con <- getConn
---   liftIO $ O.runQuery con (yellowReadingsQuery hubID)
-
--- getRedReadingsByHub :: HubID -> AppM [ReadingRead]
--- getRedReadingsByHub hubID = do
---   con <- getConn
---   liftIO $ O.runQuery con (redReadingsQuery hubID)
-
-postReading :: VendorID -> ReadingWrite -> AppM (Maybe ReadingID)
-postReading _ reading = do
+postReading :: ReadingWrite -> AppM (Maybe ReadingID)
+postReading reading = do
   con <- getConn
   liftIO $ listToMaybe <$>
     O.runInsertManyReturning con readingTable [readingToPG reading] readingId

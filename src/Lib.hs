@@ -107,19 +107,29 @@ startApp args = do
 readerTToExcept :: Config -> AppM :~> ExceptT S.ServantErr IO
 readerTToExcept pool = S.Nat (\r -> runReaderT r pool)
 
-type API' = "hubs" :> HubAPI
-      :<|> "tanks" :> TankAPI
-      :<|> "readings" :> ReadingAPI
+type APIGet = "hubs" :> HubAPIGet
+      :<|> "tanks" :> TankAPIGet
+      :<|> "readings" :> ReadingAPIGet
 
-type AuthAPI = API' :<|> S.Raw
+type APIPost = "hubs" :> HubAPIPost
+               :<|> "tanks" :> TankAPIPost
+               :<|> "readings" :> ReadingAPIPost
+
+type AuthAPI = APIGet :<|> S.Raw
 
 type UnAuthAPI = "vendors" :> VendorAPI
+                 :<|> "post" :> APIPost
                  :<|> S.Raw
 
-server' :: VendorID -> S.ServerT API' AppM
-server' v = hubServer v
-    :<|> tankServer v
-    :<|> readingServer v
+serverGet :: VendorID -> S.ServerT APIGet AppM
+serverGet v = hubGetServer v
+    :<|> tankGetServer v
+    :<|> readingGetServer v
+
+serverPost :: S.ServerT APIPost AppM
+serverPost = hubPostServer
+             :<|> tankPostServer
+             :<|> readingPostServer
 
 type FullAPI = "auth" :> BasicAuth "vendor" VendorRead :> AuthAPI
                :<|> UnAuthAPI
@@ -148,7 +158,8 @@ fullApi = S.Proxy
 
 fullApp :: Config -> Wai.Application
 fullApp cfg = S.serveWithContext fullApi (authContext cfg) $
-              (\v -> S.enter (readerTToExcept cfg) (server' $ vendorId v)
+              (\v -> S.enter (readerTToExcept cfg) (serverGet $ vendorId v)
                 :<|> S.serveDirectory "auth")
               :<|> (S.enter (readerTToExcept cfg) vendorServer
+                    :<|> S.enter (readerTToExcept cfg) serverPost
                     :<|> S.serveDirectory "public")

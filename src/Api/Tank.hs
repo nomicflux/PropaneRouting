@@ -17,19 +17,21 @@ import App
 import Models.Tank
 import Queries.Tank
 
-type TankAPI = Get '[JSON] [TankRead]
+type TankAPIGet = Get '[JSON] [TankRead]
               :<|> Capture "id" TankID :> Get '[JSON] (Maybe TankRead)
               :<|> "hub" :> Capture "hub" HubID :> Get '[JSON] [TankRead]
-              :<|> ReqBody '[JSON] TankWrite :> Post '[JSON] (Maybe TankID)
 
-tankAPI :: Proxy TankAPI
-tankAPI = Proxy
+type TankAPIPost = ReqBody '[JSON] TankWrite :> Post '[JSON] (Maybe TankID)
 
-tankServer :: VendorID -> ServerT TankAPI AppM
-tankServer v = getTanks v
+tankAPIGet :: Proxy TankAPIGet
+tankAPIGet = Proxy
+
+tankGetServer :: VendorID -> ServerT TankAPIGet AppM
+tankGetServer v = getTanks v
                :<|> getTankById v
                :<|> getTanksByHub v
-               :<|> postTank v
+tankPostServer :: ServerT TankAPIPost AppM
+tankPostServer = postTank
 
 getTanks :: VendorID -> AppM [TankRead]
 getTanks v = do
@@ -46,8 +48,8 @@ getTanksByHub v hubID = do
   con <- getConn
   liftIO $ O.runQuery con (tanksByHubQuery v hubID)
 
-postTank :: VendorID -> TankWrite -> AppM (Maybe TankID)
-postTank _ tank = do
+postTank :: TankWrite -> AppM (Maybe TankID)
+postTank tank = do
   con <- getConn
   liftIO $ listToMaybe <$>
     O.runInsertManyReturning con tankTable [tankToPG tank] tankId

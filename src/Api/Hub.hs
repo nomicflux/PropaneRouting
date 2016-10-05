@@ -13,17 +13,23 @@ import App
 import Models.Hub
 import Queries.Hub
 
-type HubAPI = Get '[JSON] [HubRead]
+type HubAPIGet = Get '[JSON] [HubRead]
               :<|> Capture "id" HubID :> Get '[JSON] (Maybe HubRead)
-              :<|> ReqBody '[JSON] HubWrite :> Post '[JSON] (Maybe HubID)
 
-hubAPI :: Proxy HubAPI
-hubAPI = Proxy
+type HubAPIPost = ReqBody '[JSON] HubWrite :> Post '[JSON] (Maybe HubID)
 
-hubServer :: VendorID -> ServerT HubAPI AppM
-hubServer v = getHubs v
-              :<|> getHubById v
-              :<|> postHub v
+hubAPIGet :: Proxy HubAPIGet
+hubAPIGet = Proxy
+
+hubAPIPost :: Proxy HubAPIPost
+hubAPIPost = Proxy
+
+hubGetServer :: VendorID -> ServerT HubAPIGet AppM
+hubGetServer v = getHubs v
+                 :<|> getHubById v
+
+hubPostServer :: ServerT HubAPIPost AppM
+hubPostServer = postHub
 
 getHubs :: VendorID -> AppM [HubRead]
 getHubs v = do
@@ -35,8 +41,8 @@ getHubById v hubID = do
   con <- getConn
   liftIO $ listToMaybe <$> O.runQuery con (hubByIdQuery v hubID)
 
-postHub :: VendorID -> HubWrite -> AppM (Maybe HubID)
-postHub v hub = do
+postHub :: HubWrite -> AppM (Maybe HubID)
+postHub hub = do
   con <- getConn
   liftIO $ listToMaybe <$>
-    O.runInsertManyReturning con hubTable [hubToPG v hub] hubId
+    O.runInsertManyReturning con hubTable [hubToPG hub] hubId

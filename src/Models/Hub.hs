@@ -23,7 +23,7 @@ data Hub' id name lat lng vendor = Hub
                             } deriving (Generic)
 
 type HubRead = Hub' HubID String Lat Lng VendorID
-type HubWrite = Hub' (Maybe HubID) String Lat Lng (Maybe VendorID)
+type HubWrite = Hub' (Maybe HubID) String Lat Lng VendorID
 type HubColRead = Hub' (O.Column O.PGInt8)
                        (O.Column O.PGText)
                        (O.Column O.PGFloat8)
@@ -49,7 +49,7 @@ instance FromJSON HubWrite where
                          o .: "name" <*>
                          o .: "lat" <*>
                          o .: "lng" <*>
-                         o .:? "vendor"
+                         o .: "vendor"
   parseJSON _ = mzero
 
 $(makeAdaptorAndInstance "pHub" ''Hub')
@@ -62,10 +62,10 @@ hubTable = O.Table "hubs" (pHub Hub { hubId = O.optional "id"
                                     , hubVendor = O.required "vendor_id"
                                     })
 
-hubToPG :: VendorID -> HubWrite -> HubColWrite
-hubToPG v = pHub Hub { hubId = const Nothing
-                     , hubName = O.pgString
-                     , hubLat = O.pgDouble
-                     , hubLng = O.pgDouble
-                     , hubVendor = const (O.pgInt8 v)
-                     }
+hubToPG :: HubWrite -> HubColWrite
+hubToPG = pHub Hub { hubId = const Nothing
+                   , hubName = O.pgString
+                   , hubLat = O.pgDouble
+                   , hubLng = O.pgDouble
+                   , hubVendor = O.pgInt8
+                   }
