@@ -94,7 +94,7 @@ startApp :: [String] -> IO ()
 startApp args = do
   yamlConfigFile <- Yaml.decodeFileEither "config.yaml"
   yamlConfig <- case yamlConfigFile of
-    Left err -> fail (show err)
+    Left err -> fail (Yaml.prettyPrintParseException err)
     Right cfg -> return cfg
   let port = fromMaybe 8080 (envPort yamlConfig)
       env = fromMaybe Production (envEnvironment yamlConfig)
