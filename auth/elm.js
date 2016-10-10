@@ -9003,7 +9003,7 @@ function open(url, settings)
 	{
 		try
 		{
-			var socket = new WebSocket(url);
+			  var socket = new WebSocket(url, {protocol: 8, origin: 'https://127.0.0.1:8080', rejectUnauthorized: false});
 		}
 		catch(err)
 		{
@@ -10082,25 +10082,6 @@ var _user$project$ReadingAPI$encodeReadingWrite = function (x) {
 			}
 			]));
 };
-var _user$project$ReadingAPI$post = function (body) {
-	var request = {
-		verb: 'POST',
-		headers: _elm_lang$core$Native_List.fromArray(
-			[
-				{ctor: '_Tuple2', _0: 'Content-Type', _1: 'application/json'}
-			]),
-		url: '/auth/readings',
-		body: _evancz$elm_http$Http$string(
-			A2(
-				_elm_lang$core$Json_Encode$encode,
-				0,
-				_user$project$ReadingAPI$encodeReadingWrite(body)))
-	};
-	return A2(
-		_evancz$elm_http$Http$fromJson,
-		_elm_lang$core$Json_Decode$maybe(_elm_lang$core$Json_Decode$int),
-		A2(_evancz$elm_http$Http$send, _evancz$elm_http$Http$defaultSettings, request));
-};
 var _user$project$ReadingAPI$encodeReadingRead = function (x) {
 	return _elm_lang$core$Json_Encode$object(
 		_elm_lang$core$Native_List.fromArray(
@@ -10141,6 +10122,29 @@ var _user$project$ReadingAPI$encodeReadingRead = function (x) {
 				}(x.readingSensorSent)
 			}
 			]));
+};
+var _user$project$ReadingAPI$dset = _evancz$elm_http$Http$defaultSettings;
+var _user$project$ReadingAPI$tlsSettings = _elm_lang$core$Native_Utils.update(
+	_user$project$ReadingAPI$dset,
+	{withCredentials: true});
+var _user$project$ReadingAPI$post = function (body) {
+	var request = {
+		verb: 'POST',
+		headers: _elm_lang$core$Native_List.fromArray(
+			[
+				{ctor: '_Tuple2', _0: 'Content-Type', _1: 'application/json'}
+			]),
+		url: '/auth/readings',
+		body: _evancz$elm_http$Http$string(
+			A2(
+				_elm_lang$core$Json_Encode$encode,
+				0,
+				_user$project$ReadingAPI$encodeReadingWrite(body)))
+	};
+	return A2(
+		_evancz$elm_http$Http$fromJson,
+		_elm_lang$core$Json_Decode$maybe(_elm_lang$core$Json_Decode$int),
+		A2(_evancz$elm_http$Http$send, _user$project$ReadingAPI$tlsSettings, request));
 };
 var _user$project$ReadingAPI$ReadingRead = F5(
 	function (a, b, c, d, e) {
@@ -10186,7 +10190,7 @@ var _user$project$ReadingAPI$get = function () {
 	return A2(
 		_evancz$elm_http$Http$fromJson,
 		_elm_lang$core$Json_Decode$list(_user$project$ReadingAPI$decodeReadingRead),
-		A2(_evancz$elm_http$Http$send, _evancz$elm_http$Http$defaultSettings, request));
+		A2(_evancz$elm_http$Http$send, _user$project$ReadingAPI$tlsSettings, request));
 }();
 var _user$project$ReadingAPI$getById = function (id) {
 	var request = {
@@ -10205,7 +10209,7 @@ var _user$project$ReadingAPI$getById = function (id) {
 	return A2(
 		_evancz$elm_http$Http$fromJson,
 		_elm_lang$core$Json_Decode$maybe(_user$project$ReadingAPI$decodeReadingRead),
-		A2(_evancz$elm_http$Http$send, _evancz$elm_http$Http$defaultSettings, request));
+		A2(_evancz$elm_http$Http$send, _user$project$ReadingAPI$tlsSettings, request));
 };
 var _user$project$ReadingAPI$getByTank = F3(
 	function (tank, mseconds, mreading) {
@@ -10265,7 +10269,7 @@ var _user$project$ReadingAPI$getByTank = F3(
 		return A2(
 			_evancz$elm_http$Http$fromJson,
 			_elm_lang$core$Json_Decode$list(_user$project$ReadingAPI$decodeReadingRead),
-			A2(_evancz$elm_http$Http$send, _evancz$elm_http$Http$defaultSettings, request));
+			A2(_evancz$elm_http$Http$send, _user$project$ReadingAPI$tlsSettings, request));
 	});
 var _user$project$ReadingAPI$getByHub = function (hub) {
 	var request = {
@@ -10290,7 +10294,7 @@ var _user$project$ReadingAPI$getByHub = function (hub) {
 	return A2(
 		_evancz$elm_http$Http$fromJson,
 		_elm_lang$core$Json_Decode$list(_user$project$ReadingAPI$decodeReadingRead),
-		A2(_evancz$elm_http$Http$send, _evancz$elm_http$Http$defaultSettings, request));
+		A2(_evancz$elm_http$Http$send, _user$project$ReadingAPI$tlsSettings, request));
 };
 var _user$project$ReadingAPI$ReadingWrite = F5(
 	function (a, b, c, d, e) {
@@ -11650,13 +11654,13 @@ var _user$project$Propane$subscriptions = function (model) {
 				A2(_elm_lang$core$Time$every, 500 * _elm_lang$core$Time$millisecond, _user$project$Propane$FastTick),
 				A2(
 				_elm_lang$websocket$WebSocket$listen,
-				'ws://localhost:8080',
+				'wss://localhost:8080',
 				function (_p29) {
 					return _user$project$Propane$NewReading(
 						_elm_lang$core$Result$toMaybe(
 							_elm_lang$core$String$toInt(_p29)));
 				}),
-				_elm_lang$websocket$WebSocket$keepAlive('ws://localhost:8080')
+				_elm_lang$websocket$WebSocket$keepAlive('wss://localhost:8080')
 			]));
 };
 var _user$project$Propane$ClearChart = function (a) {

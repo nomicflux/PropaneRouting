@@ -1,12 +1,14 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE DataKinds       #-}
 {-# LANGUAGE TypeOperators   #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Lib
     ( startApp
     ) where
 
 import qualified Network.Wai as Wai
+import qualified Network.Wai.Handler.WarpTLS as Warp
 import qualified Network.Wai.Handler.Warp as Warp
 import qualified Network.Wai.Middleware.RequestLogger as MidRL
 import Servant ((:<|>)( .. ), (:>), (:~>), Context( .. ), BasicAuthCheck)
@@ -14,22 +16,26 @@ import qualified Servant as S
 import Servant.API.BasicAuth (BasicAuth)
 import qualified Servant.API.BasicAuth as SBA
 import qualified Opaleye as O
+import Data.Monoid ((<>))
+import Control.Monad (unless)
 import Control.Monad.IO.Class (liftIO)
 import Control.Monad.Trans.Reader (runReaderT)
 import Control.Monad.Trans.Except (ExceptT)
 import qualified Database.PostgreSQL.Simple as PGS
 import qualified Data.Pool as Pool
 import qualified System.Log.FastLogger as FL
-import Data.Default.Class (def, Default)
-import Data.Maybe (listToMaybe)
+import Data.Default.Class (def)
+import Data.Maybe (listToMaybe, fromMaybe)
 import qualified Data.ByteString.Char8 as BS
+import System.Directory (doesFileExist)
+import qualified Data.Yaml as Yaml
 
 import App (Config ( .. )
            , AppM
            , Environment ( .. )
            , LogTo ( .. )
            , VendorID
-           , lookupEnvDefault
+           , EnvConfig ( .. )
            , mkConfig
            )
 import Api.Hub
@@ -46,19 +52,12 @@ data ConnectionInfo = ConnectionInfo
                       , connDatabase :: String
                       }
 
-instance Default ConnectionInfo where
-  def = ConnectionInfo
-        { connUser = "gasmasters"
-        , connPassword = "oscarMeyerPadThai"
-        , connDatabase = "gasmasters"
-        }
-
-getConnInfo :: IO ConnectionInfo
-getConnInfo =
-  ConnectionInfo <$>
-    lookupEnvDefault "GM_PG_USER" (connUser def) <*>
-    lookupEnvDefault "GM_PG_PWD" (connPassword def) <*>
-    lookupEnvDefault "GM_PG_DB" (connDatabase def)
+-- getConnInfo :: IO ConnectionInfo
+-- getConnInfo =
+  -- ConnectionInfo <$>
+    -- lookupEnvDefault "GM_PG_USER" (connUser def) <*>
+    -- lookupEnvDefault "GM_PG_PWD" (connPassword def) <*>
+    -- lookupEnvDefault "GM_PG_DB" (connDatabase def)
 
 connInfoToPG :: ConnectionInfo -> PGS.ConnectInfo
 connInfoToPG connInfo = PGS.defaultConnectInfo
@@ -67,9 +66,12 @@ connInfoToPG connInfo = PGS.defaultConnectInfo
                         , PGS.connectDatabase = connDatabase connInfo
                         }
 
-openConnection :: IO PGS.Connection
-openConnection = do
-  connInfo <- getConnInfo
+openConnection :: EnvConfig -> IO PGS.Connection
+openConnection cfg = do
+  let connInfo = ConnectionInfo { connUser = envPGUser cfg
+                                , connPassword = envPGPassword cfg
+                                , connDatabase = envPGDatabase cfg
+                                }
   con <- PGS.connect (connInfoToPG connInfo)
   _ <- PGS.execute_ con "NOTIFY addedreading"
   return con
@@ -90,22 +92,35 @@ makeMiddleware logger env = case env of
 
 startApp :: [String] -> IO ()
 startApp args = do
-  port <- lookupEnvDefault "GM_PORT" 8080
-  env <- lookupEnvDefault "GM_ENV" Production
+  yamlConfigFile <- Yaml.decodeFileEither "config.yaml"
+  yamlConfig <- case yamlConfigFile of
+    Left err -> fail (show err)
+    Right cfg -> return cfg
+  let port = fromMaybe 8080 (envPort yamlConfig)
+      env = fromMaybe Production (envEnvironment yamlConfig)
+  doesFileExist (envCert yamlConfig) >>= flip unless (fail "Cert file doesn't exist")
+  case envChain yamlConfig of
+    Nothing -> return ()
+    Just f -> doesFileExist f >>= flip unless (fail "Chain file doesn't exist")
+  doesFileExist (envKey yamlConfig) >>= flip unless (fail "Key file doesn't exist")
   logTo <- case listToMaybe args of
     Just filename -> return $ File filename
-    Nothing -> lookupEnvDefault "GM_LOG" STDOut
-  pool <- Pool.createPool openConnection PGS.close 1 10 5
+    Nothing -> return $ fromMaybe STDOut (envLogTo yamlConfig)
+  pool <- Pool.createPool (openConnection yamlConfig) PGS.close 1 10 5
   logger <- makeLogger logTo
   loggerMidware <- makeMiddleware logger env
   FL.pushLogStrLn logger $ FL.toLogStr $
-    "Listening on port " ++ show port ++ " at level " ++ show env ++ " and logging to "  ++ show logTo ++ (if null args then " with no args " else " with args " ++ unwords args)
+    "Listening on port " <> show port <> " at level " <> show env <> " and logging to "  <> show logTo <> (if null args then " with no args " else " with args " <> unwords args)
   -- specsToDir [hubSpec, tankSpec, readingSpec] "src/Elm"
   cfg <- mkConfig pool logger
-  Warp.run port $ loggerMidware $ appWithSockets cfg $ fullApp cfg
+  let tls = case envChain yamlConfig of
+        Nothing -> Warp.tlsSettings (envCert yamlConfig) (envKey yamlConfig)
+        Just chain -> Warp.tlsSettingsChain (envCert yamlConfig) [chain] (envKey yamlConfig)
+      settings = Warp.setPort port Warp.defaultSettings
+  Warp.runTLS tls settings $ loggerMidware $ appWithSockets cfg $ fullApp cfg
 
 readerTToExcept :: Config -> AppM :~> ExceptT S.ServantErr IO
-readerTToExcept pool = S.Nat (\r -> runReaderT r pool)
+readerTToExcept pool = S.Nat (`runReaderT` pool)
 
 type APIGet = "hubs" :> HubAPIGet
       :<|> "tanks" :> TankAPIGet
@@ -138,7 +153,7 @@ authCheck :: Config -> BasicAuthCheck VendorRead
 authCheck cfg =
   let
     logger = getLogger cfg
-    logMsg msg = FL.pushLogStrLn logger . FL.toLogStr $ msg
+    logMsg = FL.pushLogStrLn logger . FL.toLogStr
     check (SBA.BasicAuthData uname pwd) = do
       con <- Pool.withResource (getPool cfg) return
       dbVendor <- liftIO $ listToMaybe <$> O.runQuery con (vendorByUsernameQuery $ BS.unpack uname)

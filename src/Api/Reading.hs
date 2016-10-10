@@ -51,8 +51,8 @@ getReadingsByTank :: VendorID -> TankID -> Maybe Integer -> Maybe ReadingID -> A
 getReadingsByTank v tankID mseconds mreading = do
   con <- getConn
   now <- liftIO DT.getCurrentTime
-  addToLogger $ show mseconds
-  addToLogger $ show mreading
+  -- addToLogger $ show mseconds
+  -- addToLogger $ show mreading
   let query = case (mseconds, mreading) of
         (Nothing, Nothing) -> readingsByTankQuery v tankID
         (Nothing, Just rid) -> readingsByTankIdQuery v tankID rid

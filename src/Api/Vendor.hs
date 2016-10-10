@@ -31,7 +31,6 @@ vendorServer = getVendors
 
 getVendors :: AppM [VendorRead]
 getVendors = do con <- getConn
-                addToLogger "I got Users!"
                 liftIO $ O.runQuery con vendorsQuery
 
 getVendorById :: VendorID -> AppM (Maybe VendorRead)

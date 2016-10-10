@@ -9,6 +9,11 @@ import Task
 import Exts.Date exposing(toISOString)
 import Date exposing (Date)
 
+dset : Http.Settings
+dset = Http.defaultSettings
+
+tlsSettings : Http.Settings
+tlsSettings = { dset | withCredentials = True }
 
 type alias ReadingRead =
   { readingId : Int
@@ -54,7 +59,7 @@ get =
   in
     Http.fromJson
       (Json.Decode.list decodeReadingRead)
-      (Http.send Http.defaultSettings request)
+      (Http.send tlsSettings request)
 
 getById : Int -> Task.Task Http.Error (Maybe (ReadingRead))
 getById id =
@@ -72,7 +77,7 @@ getById id =
   in
     Http.fromJson
       (Json.Decode.maybe decodeReadingRead)
-      (Http.send Http.defaultSettings request)
+      (Http.send tlsSettings request)
 
 getByTank : Int -> Maybe Int -> Maybe Int -> Task.Task Http.Error (List (ReadingRead))
 getByTank tank mseconds mreading =
@@ -97,7 +102,7 @@ getByTank tank mseconds mreading =
   in
     Http.fromJson
       (Json.Decode.list decodeReadingRead)
-      (Http.send Http.defaultSettings request)
+      (Http.send tlsSettings request)
 
 getByHub : Int -> Task.Task Http.Error (List (ReadingRead))
 getByHub hub =
@@ -116,7 +121,7 @@ getByHub hub =
   in
     Http.fromJson
       (Json.Decode.list decodeReadingRead)
-      (Http.send Http.defaultSettings request)
+      (Http.send tlsSettings request)
 
 type alias ReadingWrite =
   { readingId : Maybe Int
@@ -161,4 +166,4 @@ post body =
   in
     Http.fromJson
       (Json.Decode.maybe Json.Decode.int)
-      (Http.send Http.defaultSettings request)
+      (Http.send tlsSettings request)

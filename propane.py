@@ -22,7 +22,7 @@ upper = {9: 16,
 
 skip = {9: 7, 10: 6, 11: 7, 12: 4, 13: 6}
 
-url = "http://127.0.0.1:8080/post/readings"
+url = "https://127.0.0.1:8080/post/readings"
 
 def clamp(val, mn, mx):
   if val > mx:
@@ -51,7 +51,7 @@ def synth_tank(id_):
         "%Y-%m-%dT%H:%M:%S.%fZ")
       print(obj['sensorsent'], reading, url)
       # req.post(url, json=obj, auth=HTTPBasicAuth('vendor', 'password'))
-      req.post(url, json=obj)
+      req.post(url, json=obj, verify=False)
     sleep(0.5)
   print("{} finished".format(id_))
 

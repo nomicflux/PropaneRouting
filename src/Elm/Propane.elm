@@ -291,8 +291,8 @@ subscriptions model =
         -- , updateMarker (\chartval -> UpdateChart chartval.id chartval.value)
         , Time.every (1 * second) SlowTick
         , Time.every (500*millisecond) FastTick
-        , WS.listen "ws://localhost:8080" (NewReading << Result.toMaybe << String.toInt)
-        , WS.keepAlive "ws://localhost:8080"
+        , WS.listen "wss://localhost:8080" (NewReading << Result.toMaybe << String.toInt)
+        , WS.keepAlive "wss://localhost:8080"
         ]
 
 main : Program Never
