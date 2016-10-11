@@ -19,6 +19,8 @@ import Database.PostgreSQL.Simple (Connection, execute_)
 import Data.Pool (Pool, withResource)
 import Data.Text (unpack)
 import Data.ByteString (ByteString)
+-- import qualified Data.ByteString as BS
+import qualified Data.ByteString.Char8 as BS
 -- import System.Environment (lookupEnv)
 import System.Log.FastLogger (LoggerSet, pushLogStrLn, toLogStr)
 -- import Data.Maybe (fromMaybe)
@@ -66,6 +68,7 @@ data EnvConfig = EnvConfig { envPort :: Maybe Int
                            , envPGUser :: String
                            , envPGPassword :: String
                            , envPGDatabase :: String
+                           , envSecret :: ByteString
                            }
   deriving (Show, Eq)
 
@@ -79,7 +82,8 @@ instance FromJSON EnvConfig where
     o .: "key_file" <*>
     o .: "pg_user" <*>
     o .: "pg_pwd" <*>
-    o .: "pg_db"
+    o .: "pg_db" <*>
+    (BS.pack <$> (o .: "secret"))
   parseJSON _ = mzero
 
 data Config = Config

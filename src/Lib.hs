@@ -11,14 +11,13 @@ import qualified Network.Wai as Wai
 import qualified Network.Wai.Handler.WarpTLS as Warp
 import qualified Network.Wai.Handler.Warp as Warp
 import qualified Network.Wai.Middleware.RequestLogger as MidRL
-import Servant ((:<|>)( .. ), (:>), (:~>), Context( .. ), BasicAuthCheck)
+import Servant ((:<|>)( .. ), (:>), (:~>), Context( .. ))
 import qualified Servant as S
-import Servant.API.BasicAuth (BasicAuth)
-import qualified Servant.API.BasicAuth as SBA
-import qualified Opaleye as O
+-- import Servant.API.BasicAuth (BasicAuth)
+-- import qualified Servant.API.BasicAuth as SBA
 import Data.Monoid ((<>))
 import Control.Monad (unless, (>=>))
-import Control.Monad.IO.Class (liftIO)
+-- import Control.Monad.IO.Class (liftIO)
 import Control.Monad.Trans.Reader (runReaderT)
 import Control.Monad.Trans.Except (ExceptT)
 import qualified Database.PostgreSQL.Simple as PGS
@@ -26,10 +25,10 @@ import qualified Data.Pool as Pool
 import qualified System.Log.FastLogger as FL
 import Data.Default.Class (def)
 import Data.Maybe (listToMaybe, fromMaybe)
-import qualified Data.ByteString.Char8 as BS
+-- import qualified Data.ByteString.Char8 as BS
 import System.Directory (doesFileExist)
 import qualified Data.Yaml as Yaml
-import Web.JWT (secret)
+import Web.JWT (binarySecret)
 
 import App (Config ( .. )
            , AppM
@@ -112,7 +111,7 @@ startApp args = do
   cfg <- mkConfig pool logger
   let tls = Warp.tlsSettingsChain (envCert yamlConfig) (envChain yamlConfig) (envKey yamlConfig)
       settings = Warp.setPort port Warp.defaultSettings
-  Warp.runTLS tls settings $ loggerMidware $ appWithSockets cfg $ fullApp cfg
+  Warp.runTLS tls settings $ loggerMidware $ appWithSockets cfg $ fullApp yamlConfig cfg
 
 readerTToExcept :: Config -> AppM :~> ExceptT S.ServantErr IO
 readerTToExcept pool = S.Nat (`runReaderT` pool)
@@ -147,10 +146,11 @@ unAuthAPI = S.Proxy
 fullApi :: S.Proxy FullAPI
 fullApi = S.Proxy
 
-fullApp :: Config -> Wai.Application
-fullApp cfg = S.serve unAuthAPI $ S.enter (readerTToExcept cfg) vendorServer
+fullApp :: EnvConfig -> Config -> Wai.Application
+fullApp env cfg =
+  S.serve unAuthAPI $ S.enter (readerTToExcept cfg) vendorServer
   :<|> S.enter (readerTToExcept cfg) serverSensor
-  :<|> S.enter (readerTToExcept cfg) (loginServer $ secret "johnjacobjingleheimerschmidt")
+  :<|> S.enter (readerTToExcept cfg) (loginServer $ binarySecret . envSecret $ env)
   :<|> S.serveDirectory "public"
 
 -- fullApp cfg = S.serveWithContext fullApi (authContext cfg) $
