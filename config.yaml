@@ -1,11 +1,12 @@
 port: 8080
 env: Development
 log_to: STDOut
-#chain_file: ./certs/2_mjanderson235@gmail.com.crt
-#cert_file: ./certs/1_Intermediate.crt
-#key_file: ./private/mjanderson235@gmail.com.p12
+# chain_file: 
+#     - ./certs/2_mjanderson235@gmail.com.crt
+# cert_file: ./certs/1_Intermediate.crt
+# key_file: ./private/key
 cert_file: ./certs/gasmasters.pem
-key_file: ./private/gasmasters.pem
+key_file: ./private/key
 pg_user: gasmasters
 pg_pwd: password
 pg_db: gasmasters

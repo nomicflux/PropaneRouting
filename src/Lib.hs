@@ -17,7 +17,7 @@ import Servant.API.BasicAuth (BasicAuth)
 import qualified Servant.API.BasicAuth as SBA
 import qualified Opaleye as O
 import Data.Monoid ((<>))
-import Control.Monad (unless)
+import Control.Monad (unless, (>=>))
 import Control.Monad.IO.Class (liftIO)
 import Control.Monad.Trans.Reader (runReaderT)
 import Control.Monad.Trans.Except (ExceptT)
@@ -51,13 +51,6 @@ data ConnectionInfo = ConnectionInfo
                       , connPassword :: String
                       , connDatabase :: String
                       }
-
--- getConnInfo :: IO ConnectionInfo
--- getConnInfo =
-  -- ConnectionInfo <$>
-    -- lookupEnvDefault "GM_PG_USER" (connUser def) <*>
-    -- lookupEnvDefault "GM_PG_PWD" (connPassword def) <*>
-    -- lookupEnvDefault "GM_PG_DB" (connDatabase def)
 
 connInfoToPG :: ConnectionInfo -> PGS.ConnectInfo
 connInfoToPG connInfo = PGS.defaultConnectInfo
@@ -99,9 +92,7 @@ startApp args = do
   let port = fromMaybe 8080 (envPort yamlConfig)
       env = fromMaybe Production (envEnvironment yamlConfig)
   doesFileExist (envCert yamlConfig) >>= flip unless (fail "Cert file doesn't exist")
-  case envChain yamlConfig of
-    Nothing -> return ()
-    Just f -> doesFileExist f >>= flip unless (fail "Chain file doesn't exist")
+  mapM_ (doesFileExist >=> flip unless (fail $ "Chain file doesn't exist")) (envChain yamlConfig)
   doesFileExist (envKey yamlConfig) >>= flip unless (fail "Key file doesn't exist")
   logTo <- case listToMaybe args of
     Just filename -> return $ File filename
@@ -110,12 +101,16 @@ startApp args = do
   logger <- makeLogger logTo
   loggerMidware <- makeMiddleware logger env
   FL.pushLogStrLn logger $ FL.toLogStr $
-    "Listening on port " <> show port <> " at level " <> show env <> " and logging to "  <> show logTo <> (if null args then " with no args " else " with args " <> unwords args)
+    "Listening on port " <>
+    show port <>
+    " at level " <>
+    show env <>
+    " and logging to "  <>
+    show logTo <>
+    (if null args then " with no args " else " with args " <> unwords args)
   -- specsToDir [hubSpec, tankSpec, readingSpec] "src/Elm"
   cfg <- mkConfig pool logger
-  let tls = case envChain yamlConfig of
-        Nothing -> Warp.tlsSettings (envCert yamlConfig) (envKey yamlConfig)
-        Just chain -> Warp.tlsSettingsChain (envCert yamlConfig) [chain] (envKey yamlConfig)
+  let tls = Warp.tlsSettingsChain (envCert yamlConfig) (envChain yamlConfig) (envKey yamlConfig)
       settings = Warp.setPort port Warp.defaultSettings
   Warp.runTLS tls settings $ loggerMidware $ appWithSockets cfg $ fullApp cfg
 

@@ -5,7 +5,7 @@
 module App where
 
 import Data.Int (Int64)
-import Data.Yaml ((.:), (.:?), parseJSON, FromJSON)
+import Data.Yaml ((.:), (.:?), (.!=), parseJSON, FromJSON)
 import qualified Data.Yaml as Yaml
 import GHC.Generics
 -- import Control.Concurrent.STM (TVar)
@@ -54,13 +54,14 @@ instance FromJSON LogTo where
     | s == "STDOut" = return STDOut
     | s == "STDErr" = return STDErr
     | otherwise = return $ File (unpack s)
+  parseJSON (Yaml.Object o) = File <$> o .: "file"
   parseJSON _ = mzero
 
 data EnvConfig = EnvConfig { envPort :: Maybe Int
                            , envEnvironment :: Maybe Environment
                            , envLogTo :: Maybe LogTo
                            , envCert :: String
-                           , envChain :: Maybe String
+                           , envChain :: [String]
                            , envKey :: String
                            , envPGUser :: String
                            , envPGPassword :: String
@@ -74,7 +75,7 @@ instance FromJSON EnvConfig where
     o .:? "env" <*>
     o .:? "log_to" <*>
     o .: "cert_file" <*>
-    o .:? "chain_file" <*>
+    (o .:? "chain_file" .!= []) <*>
     o .: "key_file" <*>
     o .: "pg_user" <*>
     o .: "pg_pwd" <*>
@@ -87,7 +88,7 @@ data Config = Config
               }
 
 mkConfig :: DBPool -> LoggerSet -> IO Config
-mkConfig pool logger = do
+mkConfig pool logger =
   return $ Config pool logger
 
 type AppM = ReaderT Config (ExceptT ServantErr IO)
