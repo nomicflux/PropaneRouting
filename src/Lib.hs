@@ -29,6 +29,7 @@ import Data.Maybe (listToMaybe, fromMaybe)
 import qualified Data.ByteString.Char8 as BS
 import System.Directory (doesFileExist)
 import qualified Data.Yaml as Yaml
+import Web.JWT (secret)
 
 import App (Config ( .. )
            , AppM
@@ -42,8 +43,7 @@ import Api.Hub
 import Api.Tank
 import Api.Reading
 import Api.Vendor
-import Models.Vendor
-import Queries.Vendor
+import Api.Login
 import Notifications.Sockets (appWithSockets)
 
 data ConnectionInfo = ConnectionInfo
@@ -117,59 +117,45 @@ startApp args = do
 readerTToExcept :: Config -> AppM :~> ExceptT S.ServantErr IO
 readerTToExcept pool = S.Nat (`runReaderT` pool)
 
-type APIGet = "hubs" :> HubAPIGet
-      :<|> "tanks" :> TankAPIGet
-      :<|> "readings" :> ReadingAPIGet
+type APIWeb = "hubs" :> (HubAPIGet :<|> HubAPIPost)
+              :<|> "tanks" :> (TankAPIGet :<|> TankAPIPost)
+              :<|> "readings" :> ReadingAPIGet
 
-type APIPost = "hubs" :> HubAPIPost
-               :<|> "tanks" :> TankAPIPost
-               :<|> "readings" :> ReadingAPIPost
+type APISensor = "readings" :> ReadingAPIPost
 
-type AuthAPI = APIGet :<|> S.Raw
+type AuthAPI = APIWeb :<|> S.Raw
 
 type UnAuthAPI = "vendors" :> VendorAPI
-                 :<|> "post" :> APIPost
+                 :<|> "post" :> APISensor
+                 :<|> "login" :> LoginAPI
                  :<|> S.Raw
 
-serverGet :: VendorID -> S.ServerT APIGet AppM
-serverGet v = hubGetServer v
-    :<|> tankGetServer v
-    :<|> readingGetServer v
+serverWeb :: VendorID -> S.ServerT APIWeb AppM
+serverWeb v = (hubGetServer v :<|> hubPostServer)
+              :<|> (tankGetServer v :<|> tankPostServer)
+              :<|> readingGetServer v
 
-serverPost :: S.ServerT APIPost AppM
-serverPost = hubPostServer
-             :<|> tankPostServer
-             :<|> readingPostServer
+serverSensor :: S.ServerT APISensor AppM
+serverSensor = readingPostServer
 
-type FullAPI = "auth" :> BasicAuth "vendor" VendorRead :> AuthAPI
+type FullAPI = "auth" :> AuthAPI
                :<|> UnAuthAPI
 
-authCheck :: Config -> BasicAuthCheck VendorRead
-authCheck cfg =
-  let
-    logger = getLogger cfg
-    logMsg = FL.pushLogStrLn logger . FL.toLogStr
-    check (SBA.BasicAuthData uname pwd) = do
-      con <- Pool.withResource (getPool cfg) return
-      dbVendor <- liftIO $ listToMaybe <$> O.runQuery con (vendorByUsernameQuery $ BS.unpack uname)
-      case dbVendor of
-        Nothing -> logMsg ("NoSuchUser: " ++ show uname) >> return S.NoSuchUser
-        Just v -> if authPassword v pwd
-          then return (S.Authorized v)
-          else logMsg ("BadPassword: " ++ show uname) >> return S.BadPassword
-  in
-    S.BasicAuthCheck check
-
-authContext :: Config -> Context (BasicAuthCheck VendorRead ': '[])
-authContext cfg = authCheck cfg :. EmptyContext
+unAuthAPI :: S.Proxy UnAuthAPI
+unAuthAPI = S.Proxy
 
 fullApi :: S.Proxy FullAPI
 fullApi = S.Proxy
 
 fullApp :: Config -> Wai.Application
-fullApp cfg = S.serveWithContext fullApi (authContext cfg) $
-              (\v -> S.enter (readerTToExcept cfg) (serverGet $ vendorId v)
-                :<|> S.serveDirectory "auth")
-              :<|> (S.enter (readerTToExcept cfg) vendorServer
-                    :<|> S.enter (readerTToExcept cfg) serverPost
-                    :<|> S.serveDirectory "public")
+fullApp cfg = S.serve unAuthAPI $ S.enter (readerTToExcept cfg) vendorServer
+  :<|> S.enter (readerTToExcept cfg) serverSensor
+  :<|> S.enter (readerTToExcept cfg) (loginServer $ secret "johnjacobjingleheimerschmidt")
+  :<|> S.serveDirectory "public"
+
+-- fullApp cfg = S.serveWithContext fullApi (authContext cfg) $
+              -- (\v -> S.enter (readerTToExcept cfg) (serverGet $ vendorId v)
+                -- :<|> S.serveDirectory "auth")
+              -- :<|> (S.enter (readerTToExcept cfg) vendorServer
+                    -- :<|> S.enter (readerTToExcept cfg) serverPost
+                    -- :<|> S.serveDirectory "public")

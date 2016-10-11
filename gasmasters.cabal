@@ -21,10 +21,12 @@ library
                      , Api.Tank
                      , Api.Reading
                      , Api.Vendor
+                     , Api.Login
                      , Models.Hub
                      , Models.Tank
                      , Models.Reading
                      , Models.Vendor
+                     , Models.Login
                      , Queries.Hub
                      , Queries.Tank
                      , Queries.Reading
@@ -56,6 +58,9 @@ library
                      , monad-control
                      , directory
                      , yaml
+                     , jwt
+                     , either
+                     , mtl
   default-language:    Haskell2010
 
 executable gasmasters-exe
