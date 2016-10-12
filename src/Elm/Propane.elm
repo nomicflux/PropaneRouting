@@ -190,7 +190,6 @@ yoffset = 0
 ystep : Float
 ystep = (svgHeight - yoffset) / maxY
 
-
 renderVals : Chart -> Html Msg
 renderVals chart =
     let vals = chart.values
@@ -263,18 +262,18 @@ viewChart : Chart -> Html Msg
 viewChart chart =
     div [ class "chart-region" ]
      [ div [] [ text ("Chart for Location " ++ chartLocation chart) ]
-     , div [] [ button [ onClick (ClearChart chart.id) ] [ text "Clear Chart" ] ]
+     , div [] [ button [ class "pure-button", onClick (ClearChart chart.id) ] [ text "Clear Chart" ] ]
      , div [ class "chart" ] [ renderVals chart ] ]
 
 view : Model -> Html Msg
 view model = div
              [ id "viewing-area" ]
-             [ div [ class "buttons" ]
+             [ div [ class "buttons pure-form pure-form" ]
                    [ div [ ] [ text "Include No Readings: "
                              , input [ type' "checkbox", onClick ToggleNoReadings ] [ ]
                              ]
-                   , button [ onClick RouteRed ] [ text "Route to Red" ]
-                   , button [ onClick RouteYellow ] [ text "Route to Yellow"]
+                   , button [ class "pure-button", onClick RouteRed ] [ text "Route to Red" ]
+                   , button [ class "pure-button", onClick RouteYellow ] [ text "Route to Yellow"]
                    ]
              , div [ class "charts" ] (List.map viewChart (getCurrentCharts model)) ,
                    div [] [ text "Hours to View: "
@@ -294,6 +293,9 @@ subscriptions model =
         , WS.listen "wss://localhost:8080" (NewReading << Result.toMaybe << String.toInt)
         , WS.keepAlive "wss://localhost:8080"
         ]
+
+loginInit : Cmd Msg
+loginInit = Task.perform Failure AddHub (Hub.getById 1)
 
 main : Program Never
 main =

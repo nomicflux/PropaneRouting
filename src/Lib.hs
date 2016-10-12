@@ -2,6 +2,8 @@
 {-# LANGUAGE DataKinds       #-}
 {-# LANGUAGE TypeOperators   #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE TypeFamilies #-}
 
 module Lib
     ( startApp
@@ -14,6 +16,8 @@ import qualified Network.Wai.Middleware.RequestLogger as MidRL
 import Servant ((:<|>)( .. ), (:>), (:~>), Context( .. ))
 import qualified Servant as S
 -- import Servant.API.BasicAuth (BasicAuth)
+import Servant.Server.Experimental.Auth (AuthHandler, mkAuthHandler, AuthServerData)
+import Servant.API.Experimental.Auth (AuthProtect)
 -- import qualified Servant.API.BasicAuth as SBA
 import Data.Monoid ((<>))
 import Control.Monad (unless, (>=>))
@@ -26,6 +30,7 @@ import qualified System.Log.FastLogger as FL
 import Data.Default.Class (def)
 import Data.Maybe (listToMaybe, fromMaybe)
 -- import qualified Data.ByteString.Char8 as BS
+-- import Data.Text.Encoding (decodeUtf8)
 import System.Directory (doesFileExist)
 import qualified Data.Yaml as Yaml
 import Web.JWT (binarySecret)
@@ -43,6 +48,8 @@ import Api.Tank
 import Api.Reading
 import Api.Vendor
 import Api.Login
+-- import Models.Vendor
+-- import Models.Login
 import Notifications.Sockets (appWithSockets)
 
 data ConnectionInfo = ConnectionInfo
@@ -77,26 +84,27 @@ makeLogger logTo = case logTo of
 makeMiddleware :: FL.LoggerSet -> Environment -> IO Wai.Middleware
 makeMiddleware logger env = case env of
       Test -> return id
-      Production -> MidRL.mkRequestLogger $ def { MidRL.destination = MidRL.Logger logger
-                                                , MidRL.outputFormat = MidRL.Apache MidRL.FromSocket
-                                                }
+      Production -> MidRL.mkRequestLogger $
+        def { MidRL.destination = MidRL.Logger logger
+            , MidRL.outputFormat = MidRL.Apache MidRL.FromSocket
+            }
       Development -> MidRL.mkRequestLogger $ def { MidRL.destination = MidRL.Logger logger }
 
 startApp :: [String] -> IO ()
 startApp args = do
-  yamlConfigFile <- Yaml.decodeFileEither "config.yaml"
-  yamlConfig <- case yamlConfigFile of
+  yamlConfig <- Yaml.decodeFileEither "config.yaml"
+  envCfg <- case yamlConfig of
     Left err -> fail (Yaml.prettyPrintParseException err)
     Right cfg -> return cfg
-  let port = fromMaybe 8080 (envPort yamlConfig)
-      env = fromMaybe Production (envEnvironment yamlConfig)
-  doesFileExist (envCert yamlConfig) >>= flip unless (fail "Cert file doesn't exist")
-  mapM_ (doesFileExist >=> flip unless (fail $ "Chain file doesn't exist")) (envChain yamlConfig)
-  doesFileExist (envKey yamlConfig) >>= flip unless (fail "Key file doesn't exist")
+  let port = fromMaybe 8080 (envPort envCfg)
+      env = fromMaybe Production (envEnvironment envCfg)
+  doesFileExist (envCert envCfg) >>= flip unless (fail "Cert file doesn't exist")
+  mapM_ (doesFileExist >=> flip unless (fail "Chain file doesn't exist")) (envChain envCfg)
+  doesFileExist (envKey envCfg) >>= flip unless (fail "Key file doesn't exist")
   logTo <- case listToMaybe args of
     Just filename -> return $ File filename
-    Nothing -> return $ fromMaybe STDOut (envLogTo yamlConfig)
-  pool <- Pool.createPool (openConnection yamlConfig) PGS.close 1 10 5
+    Nothing -> return $ fromMaybe STDOut (envLogTo envCfg)
+  pool <- Pool.createPool (openConnection envCfg) PGS.close 1 10 5
   logger <- makeLogger logTo
   loggerMidware <- makeMiddleware logger env
   FL.pushLogStrLn logger $ FL.toLogStr $
@@ -109,9 +117,9 @@ startApp args = do
     (if null args then " with no args " else " with args " <> unwords args)
   -- specsToDir [hubSpec, tankSpec, readingSpec] "src/Elm"
   cfg <- mkConfig pool logger
-  let tls = Warp.tlsSettingsChain (envCert yamlConfig) (envChain yamlConfig) (envKey yamlConfig)
+  let tls = Warp.tlsSettingsChain (envCert envCfg) (envChain envCfg) (envKey envCfg)
       settings = Warp.setPort port Warp.defaultSettings
-  Warp.runTLS tls settings $ loggerMidware $ appWithSockets cfg $ fullApp yamlConfig cfg
+  Warp.runTLS tls settings $ loggerMidware $ appWithSockets cfg $ fullApp envCfg cfg
 
 readerTToExcept :: Config -> AppM :~> ExceptT S.ServantErr IO
 readerTToExcept pool = S.Nat (`runReaderT` pool)
@@ -122,7 +130,7 @@ type APIWeb = "hubs" :> (HubAPIGet :<|> HubAPIPost)
 
 type APISensor = "readings" :> ReadingAPIPost
 
-type AuthAPI = APIWeb :<|> S.Raw
+type AuthAPI = APIWeb
 
 type UnAuthAPI = "vendors" :> VendorAPI
                  :<|> "post" :> APISensor
@@ -137,25 +145,31 @@ serverWeb v = (hubGetServer v :<|> hubPostServer)
 serverSensor :: S.ServerT APISensor AppM
 serverSensor = readingPostServer
 
-type FullAPI = "auth" :> AuthAPI
+type FullAPI = "auth" :> AuthProtect "jwt-auth" :> AuthAPI
                :<|> UnAuthAPI
-
-unAuthAPI :: S.Proxy UnAuthAPI
-unAuthAPI = S.Proxy
 
 fullApi :: S.Proxy FullAPI
 fullApi = S.Proxy
 
+type VendorAuth = AuthHandler Wai.Request VendorID
+
+authHandler :: Config -> VendorAuth
+authHandler _ =
+  let handler req = case lookup "Cookie" (Wai.requestHeaders req) of
+        Nothing -> S.throwError (S.err401 { S.errBody = "Missing auth header", S.errReasonPhrase = show req })
+        Just _ -> return 1
+  in mkAuthHandler handler
+
+type instance AuthServerData (AuthProtect "jwt-auth") = VendorID
+
+authContext :: Config -> Context (VendorAuth ': '[])
+authContext cfg = authHandler cfg :. EmptyContext
+
 fullApp :: EnvConfig -> Config -> Wai.Application
 fullApp env cfg =
-  S.serve unAuthAPI $ S.enter (readerTToExcept cfg) vendorServer
-  :<|> S.enter (readerTToExcept cfg) serverSensor
-  :<|> S.enter (readerTToExcept cfg) (loginServer $ binarySecret . envSecret $ env)
-  :<|> S.serveDirectory "public"
-
--- fullApp cfg = S.serveWithContext fullApi (authContext cfg) $
-              -- (\v -> S.enter (readerTToExcept cfg) (serverGet $ vendorId v)
-                -- :<|> S.serveDirectory "auth")
-              -- :<|> (S.enter (readerTToExcept cfg) vendorServer
-                    -- :<|> S.enter (readerTToExcept cfg) serverPost
-                    -- :<|> S.serveDirectory "public")
+  S.serveWithContext fullApi (authContext cfg) $
+  (\v -> S.enter (readerTToExcept cfg) (serverWeb v))
+  :<|> (S.enter (readerTToExcept cfg) vendorServer
+        :<|> (S.enter (readerTToExcept cfg) serverSensor)
+        :<|> (S.enter (readerTToExcept cfg) (loginServer (binarySecret . envSecret $ env)))
+        :<|> S.serveDirectory "public")

@@ -1,11 +1,32 @@
-<HTML>
-  <HEAD>
-    <script src="elm.js"></script>
-  </HEAD>
-  <BODY>
-    <div id="elm-app"></div>
-    <script>
-      var app = Elm.Login.embed(document.getElementById("elm-app"));
-    </script>
-  </BODY>
-</HTML>
+<!doctype html>
+<html>
+  <head>
+    <style>
+      line {
+      stroke: rgb(0,0,0);
+      stroke-width: 1;
+      }
+      #elm-area {
+      padding: 10px;
+      }
+      #map-area {
+      height: 800px;
+      }
+    </style>
+    <script src="./elm.js"></script>
+    <script src="./maps.js"></script>
+    <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyC7eHXG3KjXBZRNsMK048V9KJsxRLL8VgQ&callback=initMap"
+  type="text/javascript"></script>
+    <link rel="stylesheet" href="./pure-min.css" />
+  </head>
+  <body>
+    <div class="pure-g">
+      <div class="pure-u-1-2">
+        <div id="elm-area"></div>
+      </div>
+      <div class="pure-u-1-2">
+        <div id="map-area"></div>
+      </div>
+    </div>
+  </body>
+</html>

@@ -4,36 +4,65 @@ import Html.App
 import Html as H
 import Html.Attributes as HA
 import Html.Events as HE
-import Maybe exposing (Maybe(..))
+import Http
+import Maybe exposing (Maybe(..), withDefault)
+import Task
+
+import Debug
+
+import LoginAPI
 
 type alias Model = { username : Maybe String
                    , password : Maybe String
+                   , error : Maybe String
                    }
 
 initialModel : Model
 initialModel = { username = Nothing
                , password = Nothing
+               , error = Nothing
                }
 
 type Msg = Login
-         | LoginSuccess String
-         | LoginFailure String
+         | LoginSuccess (Maybe LoginAPI.Token)
+         | LoginFailure Http.Error
          | InputUsername String
          | InputPassword String
+
+addError : Model -> String -> Model
+addError model err = { model | error = Just err }
+
+removeError : Model -> Model
+removeError model = { model | error = Nothing }
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         Login ->
-            (model, Cmd.none)
+            let
+                user = { username = withDefault "" model.username
+                       , password = withDefault "" model.password
+                       }
+            in
+                (removeError model, LoginAPI.login user |> Task.perform LoginFailure LoginSuccess)
         LoginSuccess success ->
-            (model, Cmd.none)
+            let
+                _ = success |> Debug.log "Success"
+            in
+                (removeError model, Cmd.none)
         LoginFailure failure ->
-            (model, Cmd.none)
+            let
+                _ = failure |> Debug.log "Failure"
+                body = case failure of
+                           Http.BadResponse _ err -> err
+                           Http.UnexpectedPayload err -> err
+                           _ -> "Unknown error"
+            in
+                (addError model ("Error: " ++ body), Cmd.none)
         InputUsername uname ->
-            ({model|username=Just uname}, Cmd.none)
+            (removeError {model|username=Just uname}, Cmd.none)
         InputPassword pwd ->
-            ({model|password=Just pwd}, Cmd.none)
+            (removeError {model|password=Just pwd}, Cmd.none)
 
 usernameField : H.Html Msg
 usernameField =
@@ -51,16 +80,24 @@ passwordField =
         , H.input [HA.type' "password", HA.name "password", HE.onInput InputPassword] []
         ]
 
+errorDiv : Model -> List (H.Html Msg)
+errorDiv model =
+    case model.error of
+        Nothing -> []
+        Just err -> [ H.aside [ HA.class "pure-alert pure-alert-error" ] [ H.text err ] ]
+
 view : Model -> H.Html Msg
 view model =
     H.div
         [ HA.class "login jumbotron" ]
-        [ H.div
-              [ ]
+        ( H.div
+              [ HA.class "pure-form pure-form-stacked" ]
               [ usernameField
               , passwordField
-              ]
-        ]
+              , H.button
+                  [ HA.class "pure-button pure-button-primary", HE.onClick Login ]
+                  [ H.text "Login" ]
+              ] :: errorDiv model)
 
 subscriptions : Model -> Sub Msg
 subscriptions _ = Sub.none
