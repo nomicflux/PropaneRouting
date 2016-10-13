@@ -48,8 +48,17 @@ update msg model =
         PropaneAction propaneMsg ->
             let
                 (propaneModel, propaneCmds) = Propane.update propaneMsg model.propaneModel
+                propanedModel = { model | propaneModel = propaneModel }
+                loginInit = Cmd.map LoginAction Login.loginInit
             in
-                ( { model | propaneModel = propaneModel}, Cmd.map PropaneAction propaneCmds )
+                case propaneMsg of
+                    Propane.LogoutSuccess token ->
+                        ( changePage propanedModel Login
+                        , Cmd.batch [ Cmd.map PropaneAction propaneCmds, loginInit ]
+                        )
+                    _ ->
+                        ( propanedModel
+                        , Cmd.map PropaneAction propaneCmds )
 
 view : Model -> H.Html Msg
 view model =

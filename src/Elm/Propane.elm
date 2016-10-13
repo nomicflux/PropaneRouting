@@ -20,6 +20,7 @@ import TankAPI as Tank
 import ReadingAPI as Reading
 import Chart exposing (..)
 import WebSocket as WS
+import LoginAPI
 
 type alias Model = { charts : List Chart
                    , numCharts : Int
@@ -29,7 +30,7 @@ type alias Model = { charts : List Chart
                    , chartsToRead : Set ChartID
                    }
 
-type Msg = ClearChart ChartID
+type Msg = ClearChart
          | AddChart (ChartID, GMPos, Float, Float)
          | MarkerClicked ChartID
          | AddHub (Maybe Hub.HubRead)
@@ -44,6 +45,8 @@ type Msg = ClearChart ChartID
          | RouteYellow
          | FastTick Time
          | SlowTick Time
+         | LogoutSuccess (Maybe LoginAPI.Token)
+         | Logout
 
 zip : List a -> List b -> List (a, b)
 zip xs ys =
@@ -64,10 +67,10 @@ initialModel = { charts = [ ]
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
     case msg of
-        ClearChart idx ->
-            let newCharts = List.map (\c -> if c.id == idx then clearChart c else c) model.charts
+        ClearChart ->
+            let newCharts = List.map clearChart model.charts
             in ({ model | charts = newCharts
-                , chartsToRead = Set.insert idx model.chartsToRead
+                , chartsToRead = List.foldr (\c -> Set.insert c.id) Set.empty model.charts
                 }, Cmd.none )
         AddChart (id, pos, yellow, red) ->
             let newChart = { id = id
@@ -164,6 +167,17 @@ update msg model =
                                    else Nothing)
             in ( model
                , Cmd.batch (getReadings model.chartsToRead model.charts))
+        LogoutSuccess mtoken ->
+            let
+                _ = mtoken |> Debug.log "Logout Token"
+            in
+                ( initialModel, Cmd.none )
+        Logout ->
+            ( initialModel
+            , Cmd.batch
+                [ clearTanks True
+                , Task.perform Failure LogoutSuccess LoginAPI.logout
+                ])
 
 getCurrentCharts : Model -> List Chart
 getCurrentCharts model =
@@ -262,18 +276,24 @@ viewChart : Chart -> Html Msg
 viewChart chart =
     div [ class "chart-region" ]
      [ div [] [ text ("Chart for Location " ++ chartLocation chart) ]
-     , div [] [ button [ class "pure-button", onClick (ClearChart chart.id) ] [ text "Clear Chart" ] ]
+     , div [] [ button [ class "pure-button", onClick ClearChart ] [ text "Refresh Charts" ] ]
      , div [ class "chart" ] [ renderVals chart ] ]
 
 view : Model -> Html Msg
 view model = div
              [ id "viewing-area" ]
-             [ div [ class "buttons pure-form pure-form" ]
+             [ div [ class "logout" ]
+                   [ button [ class "pure-button pure-button-primary", onClick Logout ]
+                         [ text "Log Out" ]
+                   ]
+             , div [ class "buttons pure-form pure-form" ]
                    [ div [ ] [ text "Include No Readings: "
                              , input [ type' "checkbox", onClick ToggleNoReadings ] [ ]
                              ]
-                   , button [ class "pure-button", onClick RouteRed ] [ text "Route to Red" ]
-                   , button [ class "pure-button", onClick RouteYellow ] [ text "Route to Yellow"]
+                   , button [ class "pure-button pure-button-error", onClick RouteRed ]
+                       [ text "Route to Red" ]
+                   , button [ class "pure-button pure-button-warning", onClick RouteYellow ]
+                       [ text "Route to Yellow"]
                    ]
              , div [ class "charts" ] (List.map viewChart (getCurrentCharts model)) ,
                    div [] [ text "Hours to View: "

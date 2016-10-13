@@ -26,6 +26,8 @@ initialModel = { username = Nothing
 type Msg = Login
          | LoginSuccess (Maybe LoginAPI.Token)
          | LoginFailure Http.Error
+         | LogoutSuccess (Maybe LoginAPI.Token)
+         | LogoutFailure Http.Error
          | InputUsername String
          | InputPassword String
 
@@ -63,6 +65,20 @@ update msg model =
             (removeError {model|username=Just uname}, Cmd.none)
         InputPassword pwd ->
             (removeError {model|password=Just pwd}, Cmd.none)
+        LogoutSuccess success ->
+            let
+                _ = success |> Debug.log "Success"
+            in
+                (removeError model, Cmd.none)
+        LogoutFailure failure ->
+            let
+                _ = failure |> Debug.log "Failure"
+                body = case failure of
+                           Http.BadResponse _ err -> err
+                           Http.UnexpectedPayload err -> err
+                           _ -> "Unknown error"
+            in
+                (addError model ("Error: " ++ body), Cmd.none)
 
 usernameField : H.Html Msg
 usernameField =
@@ -102,10 +118,12 @@ view model =
 subscriptions : Model -> Sub Msg
 subscriptions _ = Sub.none
 
+loginInit : Cmd Msg
+loginInit = Task.perform LogoutFailure LogoutSuccess LoginAPI.logout
 
 main : Program Never
 main =
-    Html.App.program { init = (initialModel, Cmd.none)
+    Html.App.program { init = (initialModel, loginInit)
                      , update = update
                      , view = view
                      , subscriptions = subscriptions

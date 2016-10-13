@@ -21,7 +21,7 @@ import Servant.API.Experimental.Auth (AuthProtect)
 -- import qualified Servant.API.BasicAuth as SBA
 import Data.Monoid ((<>))
 import Control.Monad (unless, (>=>))
--- import Control.Monad.IO.Class (liftIO)
+import Control.Monad.IO.Class (liftIO)
 import Control.Monad.Trans.Reader (runReaderT)
 import Control.Monad.Trans.Except (ExceptT)
 import qualified Database.PostgreSQL.Simple as PGS
@@ -134,7 +134,7 @@ type AuthAPI = APIWeb
 
 type UnAuthAPI = "vendors" :> VendorAPI
                  :<|> "post" :> APISensor
-                 :<|> "login" :> LoginAPI
+                 :<|> "log" :> LoginAPI
                  :<|> S.Raw
 
 serverWeb :: VendorID -> S.ServerT APIWeb AppM
@@ -154,10 +154,12 @@ fullApi = S.Proxy
 type VendorAuth = AuthHandler Wai.Request VendorID
 
 authHandler :: Config -> VendorAuth
-authHandler _ =
+authHandler cfg =
   let handler req = case lookup "Cookie" (Wai.requestHeaders req) of
         Nothing -> S.throwError (S.err401 { S.errBody = "Missing auth header", S.errReasonPhrase = show req })
-        Just _ -> return 1
+        Just cookie -> do
+          liftIO $ FL.pushLogStrLn (getLogger cfg) $ FL.toLogStr (show cookie)
+          return 1
   in mkAuthHandler handler
 
 type instance AuthServerData (AuthProtect "jwt-auth") = VendorID
@@ -168,7 +170,7 @@ authContext cfg = authHandler cfg :. EmptyContext
 fullApp :: EnvConfig -> Config -> Wai.Application
 fullApp env cfg =
   S.serveWithContext fullApi (authContext cfg) $
-  (\v -> S.enter (readerTToExcept cfg) (serverWeb v))
+  (S.enter (readerTToExcept cfg) . serverWeb)
   :<|> (S.enter (readerTToExcept cfg) vendorServer
         :<|> (S.enter (readerTToExcept cfg) serverSensor)
         :<|> (S.enter (readerTToExcept cfg) (loginServer (binarySecret . envSecret $ env)))

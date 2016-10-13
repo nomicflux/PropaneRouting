@@ -19,3 +19,5 @@ port addTank : (ChartID, GMPos, Float, Float) -> Cmd msg
 port setColor : (ChartID, Level, Bool) -> Cmd msg
 
 port sendRoutes : RoutedTanks -> Cmd msg
+
+port clearTanks : Bool -> Cmd msg

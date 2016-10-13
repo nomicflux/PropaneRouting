@@ -1,10 +1,5 @@
 function initMap() {
-    var currentWaypoints = {};
-    var pastWaypoints = {};
-    var markers = {};
-
     var app = Elm.Main.embed(document.getElementById("elm-area"));
-
     var map = document.getElementById("map-area");
     var lat = 43.03;
     var lng = -87.94;
@@ -15,17 +10,34 @@ function initMap() {
         draggable: false
         // mapTypeId: google.maps.MapTypeId.HYBRID
     };
-    var gmap = new google.maps.Map(map, mapOptions);
     var scale = 0.03;
-
-    var startPos = null;
-
-    var directionsDisplay = new google.maps.DirectionsRenderer({preserveViewport: true,
-                                                                suppressMarkers: true});
-    directionsDisplay.setMap(gmap);
-    var directionsService = new google.maps.DirectionsService;
-
+    var resolution = 1000;
     var timesCalled = 0;
+
+    var currentWaypoints = null;
+    var pastWaypoints = null;
+    var markers = null;
+    var startMarker = null;
+    var gmap = null;
+    var startPos = null;
+    var directionsService = null;
+    var directionsDisplay = null;
+
+    function reinit() {
+        currentWaypoints = {};
+        pastWaypoints = {};
+        markers = {};
+        startMarker = null;
+        gmap = new google.maps.Map(map, mapOptions);
+        startPos = null;
+        directionsService = new google.maps.DirectionsService;
+        directionsDisplay = new google.maps.DirectionsRenderer({preserveViewport: true,
+                                                                suppressMarkers: true});
+        directionsDisplay.setMap(gmap);
+
+   }
+    reinit();
+
     var redoDirections = function() {
         if(startPos !== null && areSymDiff(pastWaypoints, currentWaypoints)) {
             var directionsReq = {
@@ -53,14 +65,17 @@ function initMap() {
 
     app.ports.addHub.subscribe(function(pos) {
         startPos = pos;
-        var startMarker = new google.maps.Marker({
+        startMarker = new google.maps.Marker({
             position: pos,
             map: gmap,
             icon: "Google Maps Markers/brown_MarkerP.png"
         });
     });
 
-    var resolution = 1000;
+    app.ports.clearTanks.subscribe(function(x) {
+        reinit();
+    });
+
     app.ports.addTank.subscribe(function(posyr) {
         // console.log(posyr);
         var id = posyr[0];

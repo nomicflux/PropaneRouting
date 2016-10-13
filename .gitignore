@@ -1,6 +1,6 @@
 src/Elm/elm-stuff
 *elm.js
-dist/
+dist/*
 .cabal/
 *~
 .stack-work/
