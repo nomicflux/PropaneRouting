@@ -19,6 +19,8 @@ import Servant.Server.Experimental.Auth (AuthHandler, mkAuthHandler, AuthServerD
 import Servant.API.Experimental.Auth (AuthProtect)
 -- import Data.Foldable (forM_)
 import Data.Monoid ((<>))
+import Data.Time.Clock.POSIX (utcTimeToPOSIXSeconds)
+import Data.DateTime (getCurrentTime)
 import Control.Monad (unless, (>=>))
 import Control.Monad.IO.Class (liftIO)
 import Control.Monad.Trans.Reader (runReaderT)
@@ -159,15 +161,19 @@ authHandler cfg =
   let handler req = case lookup "JWT-Token" (Wai.requestHeaders req) of
         Nothing -> S.throwError (S.err401 { S.errBody = "Missing auth header" })
         Just cookie -> do
-          liftIO $ FL.pushLogStrLn (getLogger cfg) $ FL.toLogStr (show cookie)
-          let token = decodeUtf8 cookie
-              mvid = getVendor (getSecret cfg) (Token token)
-          liftIO $ FL.pushLogStrLn (getLogger cfg) $ FL.toLogStr (show mvid)
-          case mvid of
-            Nothing -> S.throwError (S.err401 { S.errBody = "No user in token" })
-            Just vid -> do
+          -- liftIO $ FL.pushLogStrLn (getLogger cfg) $ FL.toLogStr (show cookie)
+          let token = Token $ decodeUtf8 cookie
+              secret = getSecret cfg
+              mvid = getVendor secret token
+              mtime = getTime secret token
+          case (mvid, mtime) of
+            (Nothing, _) -> S.throwError (S.err401 { S.errBody = "No user in token" })
+            (_, Nothing) -> S.throwError (S.err401 { S.errBody = "No user in token" })
+            (Just vid, Just expires) -> do
+              now <- liftIO $ utcTimeToPOSIXSeconds <$> getCurrentTime
+              unless (expires > now) $ S.throwError (S.err401 { S.errBody = "Expired token" })
               let session = getSession cfg
-              check <- liftIO $ STM.atomically $ checkVendor session vid token
+              check <- liftIO $ STM.atomically $ checkVendor session vid (tokenText token)
               liftIO $ FL.pushLogStrLn (getLogger cfg) $ FL.toLogStr (show check)
               if check then return vid
                 else S.throwError (S.err401 { S.errBody = "No record of token" })

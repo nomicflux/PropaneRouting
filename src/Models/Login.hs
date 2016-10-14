@@ -6,6 +6,7 @@ import Prelude hiding (exp)
 import Control.Monad (mzero)
 -- import Data.Default.Class (def)
 import Data.Aeson
+import Data.Time.Clock (NominalDiffTime)
 import Data.Time.Clock.POSIX (utcTimeToPOSIXSeconds)
 import Data.DateTime (DateTime, addMinutes, getCurrentTime)
 import Data.Time.Format (formatTime, defaultTimeLocale, parseTimeM)
@@ -101,6 +102,12 @@ getVendor s token = do
   case fromJSON val of
     Error _ -> Nothing
     Success vid -> Just vid
+
+getTime :: Secret -> Token -> Maybe NominalDiffTime
+getTime s token = do
+  jwt <- decodeAndVerifySignature s (tokenText token)
+  val <- exp . claims $ jwt
+  return $ secondsSinceEpoch val
 
 mkToken :: Secret -> VendorID -> IO Token
 mkToken s vid = do
