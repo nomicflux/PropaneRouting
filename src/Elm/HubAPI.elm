@@ -5,7 +5,8 @@ import Json.Decode.Extra exposing ((|:))
 import Json.Encode
 import Http
 import Task
-
+import Maybe exposing (Maybe)
+import Token
 
 type alias HubRead =
   { hubId : Int
@@ -31,14 +32,14 @@ encodeHubRead x =
     , ( "lng", Json.Encode.float x.hubLng )
     ]
 
-get : Task.Task Http.Error (List (HubRead))
-get =
+get : Maybe Token.Token -> Task.Task Http.Error (List (HubRead))
+get token =
   let
     request =
       { verb =
           "GET"
       , headers =
-          [("Content-Type", "application/json")]
+          ("Content-Type", "application/json") :: Token.addHeader token
       , url =
           "/auth/hubs"
       , body =
@@ -49,14 +50,14 @@ get =
       (Json.Decode.list decodeHubRead)
       (Http.send Http.defaultSettings request)
 
-getById : Int -> Task.Task Http.Error (Maybe HubRead)
-getById id =
+getById : Maybe Token.Token -> Int -> Task.Task Http.Error (Maybe HubRead)
+getById token id =
   let
     request =
       { verb =
           "GET"
       , headers =
-          [("Content-Type", "application/json")]
+          ("Content-Type", "application/json") :: Token.addHeader token
       , url =
           "/auth/hubs/" ++ (id |> toString |> Http.uriEncode)
       , body =
@@ -65,46 +66,4 @@ getById id =
   in
     Http.fromJson
       (Json.Decode.maybe decodeHubRead)
-      (Http.send Http.defaultSettings request)
-
-type alias HubWrite =
-  { hubId : Maybe Int
-  , hubName : String
-  , hubLat : Float
-  , hubLng : Float
-  }
-
-decodeHubWrite : Json.Decode.Decoder HubWrite
-decodeHubWrite =
-  Json.Decode.succeed HubWrite
-    |: ("id" := Json.Decode.maybe Json.Decode.int)
-    |: ("name" := Json.Decode.string)
-    |: ("lat" := Json.Decode.float)
-    |: ("lng" := Json.Decode.float)
-
-encodeHubWrite : HubWrite -> Json.Encode.Value
-encodeHubWrite x =
-  Json.Encode.object
-    [ ( "id", Maybe.withDefault Json.Encode.null (Maybe.map Json.Encode.int x.hubId) )
-    , ( "name", Json.Encode.string x.hubName )
-    , ( "lat", Json.Encode.float x.hubLat )
-    , ( "lng", Json.Encode.float x.hubLng )
-    ]
-
-post : HubWrite -> Task.Task Http.Error (Maybe Int)
-post body =
-  let
-    request =
-      { verb =
-          "POST"
-      , headers =
-          [("Content-Type", "application/json")]
-      , url =
-          "/auth/hubs"
-      , body =
-          Http.string (Json.Encode.encode 0 (encodeHubWrite body))
-      }
-  in
-    Http.fromJson
-      (Json.Decode.maybe Json.Decode.int)
       (Http.send Http.defaultSettings request)

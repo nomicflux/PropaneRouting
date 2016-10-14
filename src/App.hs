@@ -8,7 +8,8 @@ import Data.Int (Int64)
 import Data.Yaml ((.:), (.:?), (.!=), parseJSON, FromJSON)
 import qualified Data.Yaml as Yaml
 import GHC.Generics
--- import Control.Concurrent.STM (TVar)
+import Control.Concurrent.STM (TVar)
+import qualified Control.Concurrent.STM as STM
 import Control.Monad (mzero)
 import Control.Monad.IO.Class (liftIO, MonadIO)
 import Control.Monad.Trans.Control (MonadBaseControl)
@@ -16,8 +17,10 @@ import Control.Monad.Trans.Except (ExceptT)
 import Control.Monad.Trans.Reader (ReaderT, ask)
 import Servant (ServantErr)
 import Database.PostgreSQL.Simple (Connection, execute_)
+import Data.IntMap (IntMap)
+import qualified Data.IntMap as IM
 import Data.Pool (Pool, withResource)
-import Data.Text (unpack)
+import Data.Text (unpack, Text)
 import Data.ByteString (ByteString)
 -- import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as BS
@@ -25,6 +28,7 @@ import qualified Data.ByteString.Char8 as BS
 import System.Log.FastLogger (LoggerSet, pushLogStrLn, toLogStr)
 -- import Data.Maybe (fromMaybe)
 -- import Text.Read (readMaybe)
+import Web.JWT (Secret, binarySecret)
 
 type VendorID = Int64
 type HubID = Int64
@@ -89,11 +93,44 @@ instance FromJSON EnvConfig where
 data Config = Config
               { getPool :: DBPool
               , getLogger :: LoggerSet
+              , getSession :: TVar (IntMap Text)
+              , getSecret :: Secret
               }
 
-mkConfig :: DBPool -> LoggerSet -> IO Config
-mkConfig pool logger =
-  return $ Config pool logger
+mkConfig :: DBPool -> LoggerSet -> ByteString -> IO Config
+mkConfig pool logger bssecret = do
+  session <- STM.newTVarIO IM.empty
+  return $ Config pool logger session (binarySecret bssecret)
+
+addVendor :: TVar (IntMap Text) -> VendorID -> Text -> STM.STM ()
+addVendor session vid token = STM.modifyTVar session (IM.insert (fromIntegral vid) token)
+
+removeVendor :: TVar (IntMap Text) -> VendorID -> STM.STM ()
+removeVendor session vid = STM.modifyTVar session (IM.delete (fromIntegral vid))
+
+checkVendor :: TVar (IntMap Text) -> VendorID -> Text -> STM.STM Bool
+checkVendor session vid attempt = do
+  vendors <- STM.readTVar session
+  let mchecks = (== attempt) <$> IM.lookup (fromIntegral vid) vendors
+  case mchecks of
+    Just True -> return True
+    _ -> return False
+
+addToSession :: (MonadIO m, MonadBaseControl IO m) => VendorID -> Text -> ConfigT m ()
+addToSession vid token = do
+  session <- getSession <$> ask
+  liftIO $ STM.atomically $ addVendor session vid token
+
+removeFromSession :: (MonadIO m, MonadBaseControl IO m) => VendorID -> ConfigT m ()
+removeFromSession vid = do
+  session <- getSession <$> ask
+  liftIO $ STM.atomically $ removeVendor session vid
+
+verifyToken :: (MonadIO m, MonadBaseControl IO m) => VendorID -> Text -> ConfigT m Bool
+verifyToken vid token = do
+  session <- getSession <$> ask
+  liftIO . STM.atomically $ checkVendor session vid token
+
 
 type AppM = ReaderT Config (ExceptT ServantErr IO)
 type ConfigT = ReaderT Config

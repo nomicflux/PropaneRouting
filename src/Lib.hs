@@ -15,25 +15,25 @@ import qualified Network.Wai.Handler.Warp as Warp
 import qualified Network.Wai.Middleware.RequestLogger as MidRL
 import Servant ((:<|>)( .. ), (:>), (:~>), Context( .. ))
 import qualified Servant as S
--- import Servant.API.BasicAuth (BasicAuth)
 import Servant.Server.Experimental.Auth (AuthHandler, mkAuthHandler, AuthServerData)
 import Servant.API.Experimental.Auth (AuthProtect)
--- import qualified Servant.API.BasicAuth as SBA
+-- import Data.Foldable (forM_)
 import Data.Monoid ((<>))
 import Control.Monad (unless, (>=>))
 import Control.Monad.IO.Class (liftIO)
 import Control.Monad.Trans.Reader (runReaderT)
 import Control.Monad.Trans.Except (ExceptT)
+import qualified Control.Concurrent.STM as STM
 import qualified Database.PostgreSQL.Simple as PGS
 import qualified Data.Pool as Pool
 import qualified System.Log.FastLogger as FL
 import Data.Default.Class (def)
 import Data.Maybe (listToMaybe, fromMaybe)
 -- import qualified Data.ByteString.Char8 as BS
--- import Data.Text.Encoding (decodeUtf8)
+import Data.Text.Encoding (decodeUtf8)
 import System.Directory (doesFileExist)
 import qualified Data.Yaml as Yaml
-import Web.JWT (binarySecret)
+-- import Web.JWT (binarySecret)
 
 import App (Config ( .. )
            , AppM
@@ -42,6 +42,7 @@ import App (Config ( .. )
            , VendorID
            , EnvConfig ( .. )
            , mkConfig
+           , checkVendor
            )
 import Api.Hub
 import Api.Tank
@@ -49,7 +50,7 @@ import Api.Reading
 import Api.Vendor
 import Api.Login
 -- import Models.Vendor
--- import Models.Login
+import Models.Login
 import Notifications.Sockets (appWithSockets)
 
 data ConnectionInfo = ConnectionInfo
@@ -116,7 +117,7 @@ startApp args = do
     show logTo <>
     (if null args then " with no args " else " with args " <> unwords args)
   -- specsToDir [hubSpec, tankSpec, readingSpec] "src/Elm"
-  cfg <- mkConfig pool logger
+  cfg <- mkConfig pool logger (envSecret envCfg)
   let tls = Warp.tlsSettingsChain (envCert envCfg) (envChain envCfg) (envKey envCfg)
       settings = Warp.setPort port Warp.defaultSettings
   Warp.runTLS tls settings $ loggerMidware $ appWithSockets cfg $ fullApp envCfg cfg
@@ -155,11 +156,21 @@ type VendorAuth = AuthHandler Wai.Request VendorID
 
 authHandler :: Config -> VendorAuth
 authHandler cfg =
-  let handler req = case lookup "Cookie" (Wai.requestHeaders req) of
-        Nothing -> S.throwError (S.err401 { S.errBody = "Missing auth header", S.errReasonPhrase = show req })
+  let handler req = case lookup "JWT-Token" (Wai.requestHeaders req) of
+        Nothing -> S.throwError (S.err401 { S.errBody = "Missing auth header" })
         Just cookie -> do
           liftIO $ FL.pushLogStrLn (getLogger cfg) $ FL.toLogStr (show cookie)
-          return 1
+          let token = decodeUtf8 cookie
+              mvid = getVendor (getSecret cfg) (Token token)
+          liftIO $ FL.pushLogStrLn (getLogger cfg) $ FL.toLogStr (show mvid)
+          case mvid of
+            Nothing -> S.throwError (S.err401 { S.errBody = "No user in token" })
+            Just vid -> do
+              let session = getSession cfg
+              check <- liftIO $ STM.atomically $ checkVendor session vid token
+              liftIO $ FL.pushLogStrLn (getLogger cfg) $ FL.toLogStr (show check)
+              if check then return vid
+                else S.throwError (S.err401 { S.errBody = "No record of token" })
   in mkAuthHandler handler
 
 type instance AuthServerData (AuthProtect "jwt-auth") = VendorID
@@ -168,10 +179,10 @@ authContext :: Config -> Context (VendorAuth ': '[])
 authContext cfg = authHandler cfg :. EmptyContext
 
 fullApp :: EnvConfig -> Config -> Wai.Application
-fullApp env cfg =
+fullApp _ cfg =
   S.serveWithContext fullApi (authContext cfg) $
   (S.enter (readerTToExcept cfg) . serverWeb)
   :<|> (S.enter (readerTToExcept cfg) vendorServer
-        :<|> (S.enter (readerTToExcept cfg) serverSensor)
-        :<|> (S.enter (readerTToExcept cfg) (loginServer (binarySecret . envSecret $ env)))
+        :<|> S.enter (readerTToExcept cfg) serverSensor
+        :<|> S.enter (readerTToExcept cfg) loginServer
         :<|> S.serveDirectory "public")

@@ -36,11 +36,16 @@ update msg model =
             let
                 (loginModel, loginCmds) = Login.update loginMsg model.loginModel
                 loggedInModel = { model | loginModel = loginModel }
-                propaneInit = Cmd.map PropaneAction Propane.loginInit
             in
                 case loginMsg of
                     Login.LoginSuccess token ->
-                        ( changePage loggedInModel Propane
+                        let
+                            addedToken = Propane.addToken loggedInModel.propaneModel token
+                            withToken = { model | propaneModel = addedToken}
+                            propaneInit = Cmd.map PropaneAction
+                                          (Propane.loginInit addedToken)
+                        in
+                        ( changePage withToken Propane
                         , Cmd.batch [ loginCmds |> Cmd.map LoginAction
                                     , propaneInit])
                     _ ->

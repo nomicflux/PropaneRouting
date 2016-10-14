@@ -18,6 +18,7 @@ import Time exposing (Time, second, millisecond)
 import HubAPI as Hub
 import TankAPI as Tank
 import ReadingAPI as Reading
+import Token
 import Chart exposing (..)
 import WebSocket as WS
 import LoginAPI
@@ -28,12 +29,13 @@ type alias Model = { charts : List Chart
                    , timeScale : Float
                    , includeNoReadings : Bool
                    , chartsToRead : Set ChartID
+                   , token : Maybe Token.Token
                    }
 
 type Msg = ClearChart
          | AddChart (ChartID, GMPos, Float, Float)
          | MarkerClicked ChartID
-         | AddHub (Maybe Hub.HubRead)
+         | AddHubs (List Hub.HubRead)
          | AddTanks (List Tank.TankRead)
          | AddReadings ChartID (List Reading.ReadingRead)
          | Failure Http.Error
@@ -45,7 +47,7 @@ type Msg = ClearChart
          | RouteYellow
          | FastTick Time
          | SlowTick Time
-         | LogoutSuccess (Maybe LoginAPI.Token)
+         | LogoutSuccess (Maybe Token.Token)
          | Logout
 
 zip : List a -> List b -> List (a, b)
@@ -62,7 +64,14 @@ initialModel = { charts = [ ]
                , timeScale = 12
                , includeNoReadings = False
                , chartsToRead = Set.empty
+               , token = Nothing
                }
+
+addToken : Model -> Maybe Token.Token -> Model
+addToken model token = { model | token = token }
+
+removeToken : Model -> Model
+removeToken model = { model | token = Nothing }
 
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
@@ -91,12 +100,17 @@ update msg model =
                  }, Cmd.none)
         MarkerClicked pos ->
             ( { model | currChart = Just pos }, Cmd.none )
-        AddHub mhub ->
-            case mhub of
-                Nothing -> ( model, Cmd.none )
-                Just hub -> ( model, Cmd.batch
-                                  [ addHub {lat = hub.hubLat, lng = hub.hubLng}
-                                  , Task.perform Failure AddTanks (Tank.getByHub 1)])
+        AddHubs hubs ->
+            let
+                cmds = List.concatMap (\hub ->
+                                           [ addHub {lat = hub.hubLat, lng=hub.hubLng}
+                                           , Task.perform
+                                               Failure
+                                               AddTanks
+                                               (Tank.getByHub model.token hub.hubId)] )
+                       hubs
+            in
+                ( model, Cmd.batch cmds )
         AddTanks tanks ->
             ( model, Cmd.batch (List.map (\t -> addTank (t.tankId, {lat=t.tankLat, lng=t.tankLng}, t.tankYellow, t.tankRed)) tanks))
         AddReadings idx readings ->
@@ -149,7 +163,6 @@ update msg model =
             let
                 setColors = List.map (\c -> let (i, l) = chartToLevel c
                                            in setColor (i, l, c.manual)) model.charts
-                -- newReading = Tank.getNotifications |> Task.perform Failure NewReading
             in
                 ( model
                 , setColors |> Cmd.batch )
@@ -159,6 +172,7 @@ update msg model =
                                    if Set.member c.id toRead || c.lastPulled == Nothing
                                    then
                                        Reading.getByTank
+                                           model.token
                                            c.id
                                            ((60.0 * 60.0 * model.timeScale) |> round |> Just)
                                            c.lastPulled
@@ -176,7 +190,7 @@ update msg model =
             ( initialModel
             , Cmd.batch
                 [ clearTanks True
-                , Task.perform Failure LogoutSuccess LoginAPI.logout
+                , Task.perform Failure LogoutSuccess (LoginAPI.logout model.token)
                 ])
 
 getCurrentCharts : Model -> List Chart
@@ -314,13 +328,13 @@ subscriptions model =
         , WS.keepAlive "wss://localhost:8080"
         ]
 
-loginInit : Cmd Msg
-loginInit = Task.perform Failure AddHub (Hub.getById 1)
+loginInit : Model -> Cmd Msg
+loginInit model = Task.perform Failure AddHubs (Hub.get model.token)
 
 main : Program Never
 main =
     Html.App.program
-        { init = (initialModel, Task.perform Failure AddHub (Hub.getById 1))
+        { init = (initialModel, Cmd.none)
         , view = view
         , update = update
         , subscriptions = subscriptions

@@ -2,21 +2,24 @@
 
 module Models.Login where
 
+import Prelude hiding (exp)
 import Control.Monad (mzero)
 -- import Data.Default.Class (def)
 import Data.Aeson
+import Data.Time.Clock.POSIX (utcTimeToPOSIXSeconds)
 import Data.DateTime (DateTime, addMinutes, getCurrentTime)
 import Data.Time.Format (formatTime, defaultTimeLocale, parseTimeM)
 import qualified Data.Map as M
-import Data.Monoid ((<>))
+-- import Data.Monoid ((<>))
 import Data.Text (Text)
+-- import Data.Text.Encoding (encodeUtf8)
 import qualified Data.Text as T
 -- import Data.ByteString (ByteString)
-import qualified Data.ByteString.Char8 as BS
-import Web.HttpApiData
+-- import qualified Data.ByteString.Char8 as BS
+-- import Web.HttpApiData
 import Web.JWT
 
--- import App
+import App
 import Models.Vendor
 
 data User = User { userName :: String
@@ -29,57 +32,56 @@ instance FromJSON User where
     o .: "password"
   parseJSON _ = mzero
 
-data Token = Token { tokenText :: Text
-                   , tokenExpires :: DateTime
-                   }
-
-tokenToCookie :: Token -> Text
-tokenToCookie token =
-  "token=" <> tokenText token <> "; expires=" <> formatExpiration (tokenExpires token)
+data Token = Token { tokenText :: Text }
 
 instance ToJSON Token where
-  toJSON token = object [ "token" .= tokenText token
-                        , "expires" .= tokenExpires token]
+  toJSON token = object [ "token" .= tokenText token ]
 
 instance FromJSON Token where
-  parseJSON (Object o) = Token <$> o .: "token" <*> o .: "expires"
+  parseJSON (Object o) = Token <$>
+    o .: "token"
   parseJSON _ = mzero
 
-cleanWhitespace :: String -> String
-cleanWhitespace = dropWhile (== ' ')
+-- cleanWhitespace :: String -> String
+-- cleanWhitespace = dropWhile (== ' ')
 
-cleanSemi :: String -> String
-cleanSemi s = if last s == ';' then init s else s
+-- cleanSemi :: String -> String
+-- cleanSemi s = if last s == ';' then init s else s
 
-keyValPair :: String -> Maybe (String, String)
-keyValPair s =
-  case span (/= '=') s of
-    (x@(_:_), _:ys) -> Just (cleanWhitespace x, cleanSemi . cleanWhitespace $ ys)
-    _ -> Nothing
+-- keyValPair :: String -> Maybe (String, String)
+-- keyValPair s =
+--   case span (/= '=') s of
+--     (x@(_:_), _:ys) -> Just (x, cleanSemi ys)
+--     (x@(_:_), []) -> Just (x, "")
+--     _ -> Nothing
 
-mkPairs :: String -> [String]
-mkPairs s =
-  case span (/= ';') s of
-    (x@(_:_), _:ys) -> x : mkPairs ys
-    (x@(_:_), []) -> [x]
-    _ -> []
+-- mkPairs :: String -> [String]
+-- mkPairs s =
+--   case span (/= ';') s of
+--     (x@(_:_), _:ys) -> cleanWhitespace x : mkPairs ys
+--     (x@(_:_), []) -> [cleanWhitespace x]
+--     _ -> []
 
-instance FromHttpApiData Token where
-  parseHeader bstoken =
-    let
-      mkvs = traverse keyValPair (mkPairs . BS.unpack $ bstoken)
-    in
-      case mkvs of
-        Nothing -> Left "Parse error"
-        Just kvs ->
-          let kvmap = M.fromList kvs
-              mtoken = Token <$>
-                (T.pack <$> M.lookup "token" kvmap) <*>
-                (M.lookup "expires" kvmap >>= parseExpiration)
-          in case mtoken of
-            Nothing -> Left "Missing fields"
-            Just t -> Right t
-  parseQueryParam _ = Left "Not implemented yet"
+-- instance FromHttpApiData Token where
+--   parseHeader bstoken = _
+    -- let
+    --   mkvs = traverse keyValPair (mkPairs . BS.unpack $ bstoken)
+    -- in
+    --   case mkvs of
+    --     Nothing -> Left "Parse error"
+    --     Just kvs ->
+    --       let kvmap = M.fromList kvs
+    --           mtoken = Token <$>
+    --             (T.pack <$> M.lookup "token" kvmap) <*>
+    --             (M.lookup "Expires" kvmap >>= parseExpiration)
+    --       in case mtoken of
+    --         Nothing -> Left "Missing fields"
+    --         Just t -> Right t
+  -- parseQueryParam _ = Left "Not implemented yet"
+
+-- instance ToHttpApiData Token where
+--   toHeader = encodeUtf8 . tokenText
+--   toQueryParam = tokenText
 
 expirationFormat :: String
 expirationFormat = "%a, %d %b %0Y %H:%M:%S %Z"
@@ -92,23 +94,32 @@ parseExpiration :: String -> Maybe DateTime
 parseExpiration =
   parseTimeM True defaultTimeLocale expirationFormat
 
-mkToken :: Text -> IO Token
-mkToken text = do
+getVendor :: Secret -> Token -> Maybe VendorID
+getVendor s token = do
+  jwt <- decodeAndVerifySignature s (tokenText token)
+  val <- M.lookup "vendor" . unregisteredClaims . claims $ jwt
+  case fromJSON val of
+    Error _ -> Nothing
+    Success vid -> Just vid
+
+mkToken :: Secret -> VendorID -> IO Token
+mkToken s vid = do
   now <- getCurrentTime
   let expires = addMinutes 60 now
-  return Token { tokenText = text
-               , tokenExpires = expires
-               }
+      mdate = numericDate $ utcTimeToPOSIXSeconds expires
+      stuff = def { exp = mdate
+                  , unregisteredClaims = M.singleton "vendor" (toJSON vid)
+                  }
+      text = encodeSigned HS256 s stuff
+  return Token { tokenText = text }
 
 expireToken :: Token -> IO Token
 expireToken token = do
-  now <- getCurrentTime
-  let expires = addMinutes (-60) now
-  return $ token { tokenExpires = expires, tokenText = "" }
+  -- now <- getCurrentTime
+  -- let expires = addMinutes (-60) now
+  return $ token { tokenText = "" }
 
 grantToken :: Secret -> Maybe VendorRead -> IO (Maybe Token)
 grantToken _ Nothing = return Nothing
-grantToken s (Just _) = do
-  let stuff = def
-      text = encodeSigned HS256 s stuff
-  Just <$> mkToken text
+grantToken s (Just vendor) =
+  Just <$> mkToken s (vendorId vendor)

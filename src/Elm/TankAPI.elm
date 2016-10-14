@@ -5,9 +5,11 @@ import Json.Decode.Extra exposing ((|:))
 import Json.Encode
 import Http
 import Task
-import String exposing (toInt)
-import Result exposing (toMaybe)
-import Debug exposing (crash)
+import Maybe exposing (Maybe)
+import Token
+-- import String exposing (toInt)
+-- import Result exposing (toMaybe)
+-- import Debug exposing (crash)
 -- import Exts.Date exposing(toISOString)
 -- import Date exposing (Date)
 
@@ -46,14 +48,14 @@ encodeTankRead x =
     , ( "lng", Json.Encode.float x.tankLng )
     ]
 
-get : Task.Task Http.Error (List (TankRead))
-get =
+get : Maybe Token.Token -> Task.Task Http.Error (List (TankRead))
+get token =
   let
     request =
       { verb =
           "GET"
       , headers =
-          [("Content-Type", "application/json")]
+          ("Content-Type", "application/json") :: Token.addHeader token
       , url =
           "/auth/tanks"
       , body =
@@ -64,36 +66,14 @@ get =
       (Json.Decode.list decodeTankRead)
       (Http.send Http.defaultSettings request)
 
-getNotifications : Task.Task Http.Error (Maybe Int)
-getNotifications =
-    let
-        request =
-            { verb = "GET"
-            , headers = [("Content-Type", "application/octet-stream")]
-            , url = "/auth/tanks/notifications"
-            , body = Http.empty
-            }
-        getString val =
-            case val of
-                Http.Text s -> s
-                Http.Blob b ->  crash "Can't decode notifications"
-        parseError : Http.RawError -> Http.Error
-        parseError err =
-            case err of
-                Http.RawTimeout -> Http.Timeout
-                Http.RawNetworkError -> Http.NetworkError
-    in (Http.send Http.defaultSettings request)
-        |> Task.map (.value >> getString >> toInt >> toMaybe)
-        |> Task.mapError parseError
-
-getById : Int -> Task.Task Http.Error (Maybe (TankRead))
-getById id =
+getById : Maybe Token.Token -> Int -> Task.Task Http.Error (Maybe (TankRead))
+getById token id =
   let
     request =
       { verb =
           "GET"
       , headers =
-          [("Content-Type", "application/json")]
+          ("Content-Type", "application/json") :: Token.addHeader token
       , url =
           "/auth/tanks/" ++ (id |> toString |> Http.uriEncode)
       , body =
@@ -104,14 +84,14 @@ getById id =
       (Json.Decode.maybe decodeTankRead)
       (Http.send Http.defaultSettings request)
 
-getByHub : Int -> Task.Task Http.Error (List (TankRead))
-getByHub hub =
+getByHub : Maybe Token.Token -> Int -> Task.Task Http.Error (List (TankRead))
+getByHub token hub =
   let
     request =
       { verb =
           "GET"
       , headers =
-          [("Content-Type", "application/json")]
+          ("Content-Type", "application/json") :: Token.addHeader token
       , url =
           "/auth/tanks/" ++ "hub"
           ++ "/" ++ (hub |> toString |> Http.uriEncode)
@@ -121,55 +101,4 @@ getByHub hub =
   in
     Http.fromJson
       (Json.Decode.list decodeTankRead)
-      (Http.send Http.defaultSettings request)
-
-type alias TankWrite =
-  { tankId : Maybe Int
-  , tankHub : Int
-  , tankName : String
-  , tankYellow : Maybe Int
-  , tankRed : Maybe Int
-  , tankLat : Float
-  , tankLng : Float
-  }
-
-decodeTankWrite : Json.Decode.Decoder TankWrite
-decodeTankWrite =
-  Json.Decode.succeed TankWrite
-    |: ("id" := Json.Decode.maybe Json.Decode.int)
-    |: ("hub" := Json.Decode.int)
-    |: ("name" := Json.Decode.string)
-    |: ("yellow" := Json.Decode.maybe Json.Decode.int)
-    |: ("red" := Json.Decode.maybe Json.Decode.int)
-    |: ("lat" := Json.Decode.float)
-    |: ("lng" := Json.Decode.float)
-
-encodeTankWrite : TankWrite -> Json.Encode.Value
-encodeTankWrite x =
-  Json.Encode.object
-    [ ( "id", Maybe.withDefault Json.Encode.null (Maybe.map Json.Encode.int x.tankId) )
-    , ( "hub", Json.Encode.int x.tankHub )
-    , ( "name", Json.Encode.string x.tankName )
-    , ( "yellow", Maybe.withDefault Json.Encode.null (Maybe.map Json.Encode.int x.tankYellow) )
-    , ( "red", Maybe.withDefault Json.Encode.null (Maybe.map Json.Encode.int x.tankRed) )
-    , ( "lat", Json.Encode.float x.tankLat )
-    , ( "lng", Json.Encode.float x.tankLng )
-    ]
-
-post : TankWrite -> Task.Task Http.Error (Maybe Int)
-post body =
-  let
-    request =
-      { verb =
-          "POST"
-      , headers =
-          [("Content-Type", "application/json")]
-      , url =
-          "/auth/tanks"
-      , body =
-          Http.string (Json.Encode.encode 0 (encodeTankWrite body))
-      }
-  in
-    Http.fromJson
-      (Json.Decode.maybe Json.Decode.int)
       (Http.send Http.defaultSettings request)

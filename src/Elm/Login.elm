@@ -7,6 +7,7 @@ import Html.Events as HE
 import Http
 import Maybe exposing (Maybe(..), withDefault)
 import Task
+import Token
 
 import Debug
 
@@ -24,9 +25,9 @@ initialModel = { username = Nothing
                }
 
 type Msg = Login
-         | LoginSuccess (Maybe LoginAPI.Token)
+         | LoginSuccess (Maybe Token.Token)
          | LoginFailure Http.Error
-         | LogoutSuccess (Maybe LoginAPI.Token)
+         | LogoutSuccess (Maybe Token.Token)
          | LogoutFailure Http.Error
          | InputUsername String
          | InputPassword String
@@ -119,7 +120,7 @@ subscriptions : Model -> Sub Msg
 subscriptions _ = Sub.none
 
 loginInit : Cmd Msg
-loginInit = Task.perform LogoutFailure LogoutSuccess LoginAPI.logout
+loginInit = Cmd.none -- Task.perform LogoutFailure LogoutSuccess LoginAPI.logout
 
 main : Program Never
 main =
