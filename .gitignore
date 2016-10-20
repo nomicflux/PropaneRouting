@@ -6,5 +6,4 @@ dist/*
 .stack-work/
 *.swp
 private/*
-config.yaml
 certs/*
