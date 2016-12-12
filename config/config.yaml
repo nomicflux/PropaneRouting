@@ -1,9 +1,7 @@
-port: 8080
+port: 7777
 env: Development
 log_to: STDOut
 cert_file: ./certs/certfile.pem
 key_file: ./private/keyfile.pem
 pg_user: gasmasters
-pg_pwd: password
 pg_db: gasmasters
-secret: secret

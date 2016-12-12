@@ -22,12 +22,8 @@ import qualified Data.IntMap as IM
 import Data.Pool (Pool, withResource)
 import Data.Text (unpack, Text)
 import Data.ByteString (ByteString)
--- import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as BS
--- import System.Environment (lookupEnv)
 import System.Log.FastLogger (LoggerSet, pushLogStrLn, toLogStr)
--- import Data.Maybe (fromMaybe)
--- import Text.Read (readMaybe)
 import Web.JWT (Secret, binarySecret)
 
 type VendorID = Int64
@@ -70,9 +66,7 @@ data EnvConfig = EnvConfig { envPort :: Maybe Int
                            , envChain :: [String]
                            , envKey :: String
                            , envPGUser :: String
-                           , envPGPassword :: String
                            , envPGDatabase :: String
-                           , envSecret :: ByteString
                            }
   deriving (Show, Eq)
 
@@ -85,8 +79,16 @@ instance FromJSON EnvConfig where
     (o .:? "chain_file" .!= []) <*>
     o .: "key_file" <*>
     o .: "pg_user" <*>
+    o .: "pg_db"
+  parseJSON _ = mzero
+
+data SecretConfig = SecretConfig { envPGPassword :: String
+                                 , envSecret :: ByteString
+                                 }
+
+instance FromJSON SecretConfig where
+  parseJSON (Yaml.Object o) = SecretConfig <$>
     o .: "pg_pwd" <*>
-    o .: "pg_db" <*>
     (BS.pack <$> (o .: "secret"))
   parseJSON _ = mzero
 

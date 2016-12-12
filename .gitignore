@@ -7,3 +7,4 @@ dist/*
 *.swp
 private/*
 certs/*
+config/config-secret.yaml
